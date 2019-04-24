@@ -2,9 +2,12 @@ package msz.Utils;
 
 import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.math.ec.ECPoint;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.math.BigInteger;
-import java.security.SecureRandom;
+import java.nio.charset.StandardCharsets;
+import java.security.*;
+import java.security.spec.ECGenParameterSpec;
 
 public class ECUtils {
     /**
@@ -30,5 +33,33 @@ public class ECUtils {
         SecureRandom rnd = new SecureRandom();
         BigInteger zBigR = new BigInteger(EC.getCurve().getFieldSize(), rnd);
         return EC.getG().multiply(zBigR);
+    }
+
+    public static String hashMessage(String s) {
+        MessageDigest digest = null;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        byte[] hash = digest.digest(s.getBytes(StandardCharsets.UTF_8));
+        return new String(Hex.encode(hash));
+    }
+
+    /**
+     * Generates a key pair (private, public key) with a predefined algorithm
+     *
+     * @return
+     * @throws InvalidAlgorithmParameterException
+     * @throws NoSuchProviderException
+     * @throws NoSuchAlgorithmException
+     */
+    public static KeyPair generateKeyPair() throws InvalidAlgorithmParameterException, NoSuchProviderException, NoSuchAlgorithmException {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", "SunEC");
+        ECGenParameterSpec ecsp = new ECGenParameterSpec("secp192r1");
+        kpg.initialize(ecsp);
+
+        KeyPair kp = kpg.generateKeyPair();
+        return kp;
     }
 }
