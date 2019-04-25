@@ -1,9 +1,9 @@
-package msz.Signer;
+package msz.Message;
 
 import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
 
-public class Certificate {
+public class Certificate implements Message {
     private PublicKey publicKey;   // user's public key
     private int ID;             // Account Information
     private byte[] signature;
@@ -18,11 +18,7 @@ public class Certificate {
     }
 
     public PublicKey getPublicKey() {
-        return publicKey;
-    }
-
-    public int getID() {
-        return ID;
+        return this.publicKey;
     }
 
     public byte[] getBytes() {

@@ -94,10 +94,9 @@ public class Signer implements ACL {
         return this.y;
     }
     
-    public Certificate registerClient() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+    public msz.Message.Certificate registerClient(PublicKey clientPublicKey) throws NoSuchAlgorithmException, NoSuchProviderException {
         // TODO insert into Database
         int ID = this.clientList.size() + 1;
-        PublicKey clientPublicKey = ECUtils.generateKeyPair().getPublic();  // only pubkey for client
         String rawStringToSign = clientPublicKey.toString() + "," + ID;      // public key and the ID for the registered client
 
         this.clientList.add(clientPublicKey);
@@ -112,10 +111,10 @@ public class Signer implements ACL {
             e.printStackTrace();
         }
 
-        return new Certificate(clientPublicKey, ID, clientCertificate);
+        return new msz.Message.Certificate(clientPublicKey, ID, clientCertificate);
     }
 
-    public boolean verifySignature(Certificate certToVerify) throws SignatureException, NoSuchProviderException, NoSuchAlgorithmException, InvalidKeyException {
+    public boolean verifySignature(msz.Message.Certificate certToVerify) throws SignatureException, NoSuchProviderException, NoSuchAlgorithmException, InvalidKeyException {
         // Verify the Signature
         Signature certificateTextSignature = Signature.getInstance("SHA256withECDSA", "SunEC");
         certificateTextSignature.initVerify(this.publicKey);

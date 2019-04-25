@@ -1,8 +1,20 @@
 package msz;
 
-import msz.Signer.Certificate;
+import msz.Message.Certificate;
+import msz.Message.Reputationtoken;
+
+import java.io.UnsupportedEncodingException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
 
 public interface WonProtocol {
-    void registerWithSystem();
+    Certificate registerWithSystem();
     Certificate getCertificate();
+
+    String createRandomHash() throws NoSuchAlgorithmException;
+    void exchangeHash(String randomHash);
+    Reputationtoken createReputationToken();
+    byte[] signHash(String randomHash) throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException;
+    boolean verifySignature(byte[] signatureRandomHash, String sr, Certificate cert) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException;
 }

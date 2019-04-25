@@ -20,9 +20,9 @@ public class ACLTest {
 
     @Test
     public void registerTest() {
-        Message m = new Reputationtoken();
-        String[] attributes = new String[]{"SECRET KEY", "REPUTATION", "EXPIRATION"};
-        Requestor r = new Requestor(this.params, this.signer.getY(), m, attributes);
+//        Message m = new Reputationtoken(certificate, signatureOfHash);
+//        String[] attributes = new String[]{"SECRET KEY", "REPUTATION", "EXPIRATION"};
+//        Requestor r = new Requestor(this.params, this.signer.getY(), m, attributes);
     }
 
     @Test

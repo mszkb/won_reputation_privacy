@@ -1,4 +1,4 @@
-import msz.Signer.Certificate;
+import msz.Message.Certificate;
 import msz.Signer.Signer;
 import msz.TrustedParty.Params;
 import msz.TrustedParty.TrustedParty;
@@ -33,7 +33,6 @@ public class WonProtocolUnitTests {
     }
 
 
-
     @Test
     public void test_registerWithSystem() throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, NoSuchProviderException {
         Certificate certS = this.s.registerWithSystem(this.sp);
@@ -41,6 +40,29 @@ public class WonProtocolUnitTests {
 
         assertTrue(this.sp.verifySignature(certS));
         assertTrue(this.sp.verifySignature(certR));
+    }
+
+    @Test
+    public void test_sign_randomHash_of_other_Client() throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException, NoSuchProviderException {
+        Certificate certS = this.s.registerWithSystem(this.sp);
+        Certificate certR = this.r.registerWithSystem(this.sp);
+
+        assertTrue(this.sp.verifySignature(certS));
+        assertTrue(this.sp.verifySignature(certR));
+
+        String cr = this.r.createRandomHash();
+        String sr = this.s.createRandomHash();
+
+        this.r.exchangeHash(sr);
+        this.s.exchangeHash(cr);
+
+        byte[] sigR = this.r.signHash(sr);
+        byte[] sigS = this.s.signHash(cr);
+
+        assertTrue(this.r.verifySignature(sigS, cr, certS));
+        assertTrue(this.s.verifySignature(sigR, sr, certR));
+
+        // TODO interact with SP to get a blindsignature (RSA) of {certR, sigR(sr)}
     }
 
     @Test
@@ -65,11 +87,11 @@ public class WonProtocolUnitTests {
         byte[] clientCertificate = ecdsa.sign();
 
         // Verify the Signature
-        Signature certificateTextSignature = Signature.getInstance("SHA256withECDSA", "SunEC");
-        certificateTextSignature.initVerify(signerPublicKey);
-        certificateTextSignature.update(certificateForClient.getBytes(StandardCharsets.UTF_8));
+        Signature verifying = Signature.getInstance("SHA256withECDSA", "SunEC");
+        verifying.initVerify(signerPublicKey);
+        verifying.update(certificateForClient.getBytes(StandardCharsets.UTF_8));
 
-        boolean result = certificateTextSignature.verify(clientCertificate);
+        boolean result = verifying.verify(clientCertificate);
         Assert.assertTrue(result);
     }
 }
