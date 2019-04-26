@@ -14,7 +14,9 @@ public interface WonProtocol {
 
     String createRandomHash() throws NoSuchAlgorithmException;
     void exchangeHash(String randomHash);
-    Reputationtoken createReputationToken();
-    byte[] signHash(String randomHash) throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException;
+    Reputationtoken createReputationToken(byte[] sig);
+    byte[] signHash() throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException;
     boolean verifySignature(byte[] signatureRandomHash, String sr, Certificate cert) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException;
+
+    void exchangeReputationToken(Reputationtoken rTs);
 }

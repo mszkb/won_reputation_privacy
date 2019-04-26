@@ -20,6 +20,7 @@ public class Supplier implements ACL, WonProtocol {
     private Certificate certificate;
     private String foreignRandomHash;
     private KeyPair keyPair;
+    private Certificate foreignCertificate;
 
     public Supplier() {
         try {
@@ -89,26 +90,43 @@ public class Supplier implements ACL, WonProtocol {
     }
 
     @Override
-    public byte[] signHash(String randomHash) throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException {
+    public byte[] signHash() throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException {
         // TODO sign Hash with the publickey of the certificate
         Signature signatureOfRandomHash = Signature.getInstance("SHA256withECDSA");
         signatureOfRandomHash.initSign(this.keyPair.getPrivate());
-        signatureOfRandomHash.update(randomHash.getBytes(StandardCharsets.UTF_8));
+        signatureOfRandomHash.update(this.foreignRandomHash.getBytes(StandardCharsets.UTF_8));
         return signatureOfRandomHash.sign();
     }
 
     @Override
-    public Reputationtoken createReputationToken() {
+    public Reputationtoken createReputationToken(byte[] sigS) {
         // TODO signHash
         // TODO create Reputationtoken with own cert and signature of Hash
-        return null;
+        return new Reputationtoken(this.certificate, sigS, new byte[0]);
     }
 
     @Override
-    public boolean verifySignature(byte[] signatureRandomHash, String sr, Certificate cert) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+    public boolean verifySignature(byte[] signatureRandomHash, String sr, Certificate foreignCertificate) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        boolean isHashCorrect;
+
         Signature verifySignature = Signature.getInstance("SHA256withECDSA");
-        verifySignature.initVerify(cert.getPublicKey());
+        verifySignature.initVerify(foreignCertificate.getPublicKey());
         verifySignature.update(sr.getBytes(StandardCharsets.UTF_8));
-        return verifySignature.verify(signatureRandomHash);
+        isHashCorrect = verifySignature.verify(signatureRandomHash);
+
+        if(isHashCorrect) {
+            this.foreignCertificate = foreignCertificate;
+        }
+
+        return isHashCorrect;
+    }
+
+    @Override
+    public void exchangeReputationToken(Reputationtoken RTr) {
+
+    }
+
+    public Reputationtoken createReputationToken(Certificate certS, byte[] sigS) {
+        return new Reputationtoken(certS, sigS, new byte[0]);
     }
 }

@@ -1,6 +1,8 @@
 package msz.Signer;
 
 import msz.ACL;
+import msz.Message.Reputationtoken;
+import msz.Message.Certificate;
 import msz.TrustedParty.Params;
 import msz.Utils.ECUtils;
 import org.bouncycastle.math.ec.ECPoint;
@@ -111,15 +113,50 @@ public class Signer implements ACL {
             e.printStackTrace();
         }
 
-        return new msz.Message.Certificate(clientPublicKey, ID, clientCertificate);
+        return new Certificate(clientPublicKey, ID, clientCertificate);
     }
 
-    public boolean verifySignature(msz.Message.Certificate certToVerify) throws SignatureException, NoSuchProviderException, NoSuchAlgorithmException, InvalidKeyException {
+    public boolean verifySignature(Certificate certToVerify) throws SignatureException, NoSuchProviderException, NoSuchAlgorithmException, InvalidKeyException {
         // Verify the Signature
         Signature certificateTextSignature = Signature.getInstance("SHA256withECDSA", "SunEC");
         certificateTextSignature.initVerify(this.publicKey);
         certificateTextSignature.update(certToVerify.getBytes());
 
         return certificateTextSignature.verify(certToVerify.getSignature());
+    }
+
+    public boolean verifiyReputationToken(Reputationtoken reputationtoken, String randomNumberOfHash, int rating) throws NoSuchProviderException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+
+        // TODO verify blind signature of token
+
+        // TODO check if random hash is not already used before
+
+        boolean verifyHashBool;
+        boolean verifyCertBool;
+
+
+        PublicKey publicKeyOfCert = reputationtoken.getPubkeyFromCert();
+        String reputationString = new String(reputationtoken.getBytes());
+
+        byte[] randomHashOriginal = randomNumberOfHash.getBytes(StandardCharsets.UTF_8);
+        byte[] randomHashSigToCheck = reputationtoken.getSignatureOfHash();
+
+        // Check if the signature of the hash is correct
+        Signature verifyHash = Signature.getInstance("SHA256withECDSA", "SunEC");
+        verifyHash.initVerify(publicKeyOfCert);
+        verifyHash.update(randomHashOriginal);
+        verifyHashBool = verifyHash.verify(randomHashSigToCheck);
+
+
+        byte[] certOriginal = reputationtoken.getBytesFromCert();
+        byte[] certSigToCheck = reputationtoken.getSignatureFromCert();
+
+        // Check if the certificate is correctly signed
+        Signature verifyCert = Signature.getInstance("SHA256withECDSA", "SunEC");
+        verifyCert.initVerify(this.publicKey);
+        verifyCert.update(certOriginal);
+        verifyCertBool = verifyCert.verify(certSigToCheck);
+
+        return verifyHashBool && verifyCertBool;
     }
 }

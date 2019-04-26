@@ -1,4 +1,5 @@
 import msz.Message.Certificate;
+import msz.Message.Reputationtoken;
 import msz.Signer.Signer;
 import msz.TrustedParty.Params;
 import msz.TrustedParty.TrustedParty;
@@ -32,7 +33,6 @@ public class WonProtocolUnitTests {
         this.sp = new Signer(this.params);
     }
 
-
     @Test
     public void test_registerWithSystem() throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, NoSuchProviderException {
         Certificate certS = this.s.registerWithSystem(this.sp);
@@ -44,25 +44,34 @@ public class WonProtocolUnitTests {
 
     @Test
     public void test_sign_randomHash_of_other_Client() throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException, NoSuchProviderException {
-        Certificate certS = this.s.registerWithSystem(this.sp);
         Certificate certR = this.r.registerWithSystem(this.sp);
+        Certificate certS = this.s.registerWithSystem(this.sp);
 
-        assertTrue(this.sp.verifySignature(certS));
         assertTrue(this.sp.verifySignature(certR));
+        assertTrue(this.sp.verifySignature(certS));
 
-        String cr = this.r.createRandomHash();
-        String sr = this.s.createRandomHash();
+        String rr = this.r.createRandomHash();  // random from Requestor
+        String sr = this.s.createRandomHash();  // random from Supplier
 
-        this.r.exchangeHash(sr);
-        this.s.exchangeHash(cr);
+        this.r.exchangeHash(sr);                // exchange the hash with other user
+        this.s.exchangeHash(rr);
 
-        byte[] sigR = this.r.signHash(sr);
-        byte[] sigS = this.s.signHash(cr);
+        byte[] sigR = this.r.signHash();      // requestor signs supplier hash
+        byte[] sigS = this.s.signHash();      // supplier signs requestor hash
 
-        assertTrue(this.r.verifySignature(sigS, cr, certS));
+        assertTrue(this.r.verifySignature(sigS, rr, certS));
         assertTrue(this.s.verifySignature(sigR, sr, certR));
 
+        Reputationtoken RTr = this.r.createReputationToken(certR, sigR);  // requestor creates Rep token with own cert and the signed hash from supplier
+        Reputationtoken RTs = this.s.createReputationToken(certS, sigS);  // supplier creates Rep token with own cert and the signed hash from requestor
+
+        this.r.exchangeReputationToken(RTr);
+        this.s.exchangeReputationToken(RTs);
+
         // TODO interact with SP to get a blindsignature (RSA) of {certR, sigR(sr)}
+        // check signature of RT, cert and hash ... provide original number from the other user
+        assertTrue(this.sp.verifiyReputationToken(RTs, rr, 5)); // check Rep token from Supplier with original Hash
+        assertTrue(this.sp.verifiyReputationToken(RTr, sr, 5)); // check Rep token from Requestor with original Hash
     }
 
     @Test
