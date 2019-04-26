@@ -1,4 +1,5 @@
 import msz.Message.Certificate;
+import msz.Message.Reputationtoken;
 import msz.Signer.Signer;
 import msz.TrustedParty.Params;
 import msz.TrustedParty.TrustedParty;
@@ -32,7 +33,6 @@ public class WonProtocolUnitTests {
         this.sp = new Signer(this.params);
     }
 
-
     @Test
     public void test_registerWithSystem() throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, NoSuchProviderException {
         Certificate certS = this.s.registerWithSystem(this.sp);
@@ -62,7 +62,12 @@ public class WonProtocolUnitTests {
         assertTrue(this.r.verifySignature(sigS, cr, certS));
         assertTrue(this.s.verifySignature(sigR, sr, certR));
 
+        Reputationtoken RTr = this.r.createReputationToken(sigS);
+        Reputationtoken RTs = this.s.createReputationToken(sigR);
+
         // TODO interact with SP to get a blindsignature (RSA) of {certR, sigR(sr)}
+        this.sp.verifiyReputationToken(RTr, cr, 5);
+        this.sp.verifiyReputationToken(RTs, sr, 5);
     }
 
     @Test

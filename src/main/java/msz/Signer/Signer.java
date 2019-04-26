@@ -1,6 +1,8 @@
 package msz.Signer;
 
 import msz.ACL;
+import msz.Message.Reputationtoken;
+import msz.Message.Certificate;
 import msz.TrustedParty.Params;
 import msz.Utils.ECUtils;
 import org.bouncycastle.math.ec.ECPoint;
@@ -111,15 +113,38 @@ public class Signer implements ACL {
             e.printStackTrace();
         }
 
-        return new msz.Message.Certificate(clientPublicKey, ID, clientCertificate);
+        return new Certificate(clientPublicKey, ID, clientCertificate);
     }
 
-    public boolean verifySignature(msz.Message.Certificate certToVerify) throws SignatureException, NoSuchProviderException, NoSuchAlgorithmException, InvalidKeyException {
+    public boolean verifySignature(Certificate certToVerify) throws SignatureException, NoSuchProviderException, NoSuchAlgorithmException, InvalidKeyException {
         // Verify the Signature
         Signature certificateTextSignature = Signature.getInstance("SHA256withECDSA", "SunEC");
         certificateTextSignature.initVerify(this.publicKey);
         certificateTextSignature.update(certToVerify.getBytes());
 
         return certificateTextSignature.verify(certToVerify.getSignature());
+    }
+
+    public boolean verifiyReputationToken(Reputationtoken reputationtoken, String randomNumberOfHash, int rating) throws NoSuchProviderException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+
+        // TODO verify blind signature of token
+
+        PublicKey publicKeyOfCert = reputationtoken.getPubkeyFromCert();
+        String reputationString = new String(reputationtoken.getBytes());
+
+        boolean verifyHashBool;
+        boolean verifyCertBool;
+
+        Signature verifyHash = Signature.getInstance("SHA256withECDSA", "SunEC");
+        verifyHash.initVerify(publicKeyOfCert);
+        verifyHash.update(randomNumberOfHash.getBytes(StandardCharsets.UTF_8));
+        verifyHashBool = verifyHash.verify(reputationtoken.getSignatureOfHash());
+
+        Signature verifyCert = Signature.getInstance("SHA256withECDSA", "SunEC");
+        verifyCert.initVerify(publicKeyOfCert);
+        verifyCert.update(reputationtoken.getBytesFromCert());
+        verifyCertBool = verifyCert.verify(reputationtoken.getSignatureFromCert());
+
+        return verifyHashBool && verifyCertBool;
     }
 }

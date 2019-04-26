@@ -98,10 +98,10 @@ public class Supplier implements ACL, WonProtocol {
     }
 
     @Override
-    public Reputationtoken createReputationToken() {
+    public Reputationtoken createReputationToken(byte[] sigS) {
         // TODO signHash
         // TODO create Reputationtoken with own cert and signature of Hash
-        return null;
+        return new Reputationtoken(this.certificate, sigS, new byte[0]);
     }
 
     @Override

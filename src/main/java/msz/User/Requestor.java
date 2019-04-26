@@ -128,10 +128,10 @@ public class Requestor implements ACL, WonProtocol {
     }
 
     @Override
-    public Reputationtoken createReputationToken() {
-        // TODO signHash
+    public Reputationtoken createReputationToken(byte[] sigS) {
+        // TODO s2ignHash
         // TODO create Reputationtoken with own cert and signature of Hash
-        return null;
+        return new Reputationtoken(this.certificate, sigS, new byte[0]);
     }
 
     @Override
