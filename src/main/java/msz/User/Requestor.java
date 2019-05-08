@@ -113,7 +113,7 @@ public class Requestor implements ACL, WonProtocol {
         return HashUtils.generateRandomHash();
     }
 
-        @Override
+    @Override
     public void exchangeHash(String randomHash) {
         this.foreignRandomHash = randomHash;
     }

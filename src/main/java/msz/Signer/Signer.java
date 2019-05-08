@@ -5,6 +5,15 @@ import msz.Message.Reputationtoken;
 import msz.Message.Certificate;
 import msz.TrustedParty.Params;
 import msz.Utils.ECUtils;
+import msz.Utils.RNG;
+import org.bouncycastle.crypto.CryptoException;
+import org.bouncycastle.crypto.digests.SHA1Digest;
+import org.bouncycastle.crypto.digests.SHA256Digest;
+import org.bouncycastle.crypto.engines.RSABlindedEngine;
+import org.bouncycastle.crypto.generators.RSABlindingFactorGenerator;
+import org.bouncycastle.crypto.params.RSABlindingParameters;
+import org.bouncycastle.crypto.params.RSAKeyParameters;
+import org.bouncycastle.crypto.signers.PSSSigner;
 import org.bouncycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
@@ -123,6 +132,10 @@ public class Signer implements ACL {
         certificateTextSignature.update(certToVerify.getBytes());
 
         return certificateTextSignature.verify(certToVerify.getSignature());
+    }
+
+    public void blindSign() {
+
     }
 
     public boolean verifiyReputationToken(Reputationtoken reputationtoken, String randomNumberOfHash, int rating) throws NoSuchProviderException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
