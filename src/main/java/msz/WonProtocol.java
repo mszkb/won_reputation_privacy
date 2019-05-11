@@ -18,5 +18,5 @@ public interface WonProtocol {
     byte[] signHash() throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException;
     boolean verifySignature(byte[] signatureRandomHash, String sr, Certificate cert) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException;
 
-    void exchangeReputationToken(Reputationtoken rTs);
+    void exchangeReputationToken(byte[] RTr);
 }

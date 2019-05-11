@@ -122,7 +122,7 @@ public class Supplier implements ACL, WonProtocol {
     }
 
     @Override
-    public void exchangeReputationToken(Reputationtoken RTr) {
+    public void exchangeReputationToken(byte[] RTr) {
 
     }
 

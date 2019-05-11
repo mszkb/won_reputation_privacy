@@ -151,7 +151,7 @@ public class Requestor implements ACL, WonProtocol {
     }
 
     @Override
-    public void exchangeReputationToken(Reputationtoken RTs) {
+    public void exchangeReputationToken(byte[] RTs) {
 
     }
 

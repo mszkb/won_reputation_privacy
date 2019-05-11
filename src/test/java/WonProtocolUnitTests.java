@@ -1,5 +1,6 @@
 import msz.Message.Certificate;
 import msz.Message.Reputationtoken;
+import msz.Signer.BlindSignature;
 import msz.Signer.Signer;
 import msz.TrustedParty.Params;
 import msz.TrustedParty.TrustedParty;
@@ -25,6 +26,7 @@ public class WonProtocolUnitTests {
 
     // TODO we probably do not need trusted party params in this class
     private Params params;
+    private BlindSignature blindSigner;
 
 
     /**
@@ -44,6 +46,7 @@ public class WonProtocolUnitTests {
         this.r = new Requestor(this.params);
         this.s = new Supplier(this.params);
         this.sp = new Signer(this.params);
+        this.blindSigner = new BlindSignature();
     }
 
     /**
@@ -89,15 +92,18 @@ public class WonProtocolUnitTests {
         assertTrue(this.s.verifySignature(sigR, sr, certR));
 
         Reputationtoken RTr = this.r.createReputationToken(certR, sigR);  // requestor creates Rep token with own cert and the signed hash from supplier
-        Reputationtoken RTs = this.s.createReputationToken(certS, sigS);  // supplier creates Rep token with own cert and the signed hash from requestor
+        byte[] blindRTr = this.blindSigner.blindAndSign(RTr.getBytes());
 
-        this.r.exchangeReputationToken(RTr);
-        this.s.exchangeReputationToken(RTs);
+        Reputationtoken RTs = this.s.createReputationToken(certS, sigS);  // supplier creates Rep token with own cert and the signed hash from requestor
+        byte[] blindRTs = this.blindSigner.blindAndSign(RTs.getBytes());
+
+        this.r.exchangeReputationToken(blindRTr);
+        this.s.exchangeReputationToken(blindRTs);
 
         // TODO interact with SP to get a blindsignature (RSA) of {certR, sigR(sr)}
         // check signature of RT, cert and hash ... provide original number from the other user
-        assertTrue(this.sp.verifiyReputationToken(RTs, rr, 5)); // check Rep token from Supplier with original Hash
-        assertTrue(this.sp.verifiyReputationToken(RTr, sr, 5)); // check Rep token from Requestor with original Hash
+        assertTrue(this.blindSigner.verify(RTr.getBytes(), blindRTr)); // check Rep token from Requestor with original Hash
+        assertTrue(this.blindSigner.verify(RTs.getBytes(), blindRTs)); // check Rep token from Supplier with original Hash
     }
 
     /**
