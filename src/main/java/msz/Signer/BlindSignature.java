@@ -82,7 +82,7 @@ public class BlindSignature {
      * @param blindedMessage
      * @return unblinded Message
      */
-    public byte[] unblind(byte[] blindedMessage) {
+    private byte[] unblind(byte[] blindedMessage) {
         RSABlindingEngine rsaBlindedEngine = new RSABlindingEngine();
         rsaBlindedEngine.init(false, this.blindingParameters);
         return rsaBlindedEngine.processBlock(blindedMessage, 0, blindedMessage.length);
