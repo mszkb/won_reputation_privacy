@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class ReputationService implements RepuationServer {
+public class ReputationService implements ReputationServer {
     private HashMap<Integer, List<Reputation>> reputation = new HashMap<>();
     private BlindSignature blindingHelper = new BlindSignature();
 
@@ -37,11 +37,20 @@ public class ReputationService implements RepuationServer {
 
     @Override
     public float getCurrentRating(int userId) {
-        return 0;
+        List<Reputation> reputationList = this.reputation.get(userId);
+        float rating = 0;
+
+        for(Reputation reputation : reputationList) {
+            rating += reputation.getRating();
+        }
+
+        float avgRating = rating / reputationList.size();
+
+        return avgRating;
     }
 
     @Override
-    public List<Reputation> getReputations() {
-        return null;
+    public List<Reputation> getReputations(int userId) {
+        return this.reputation.get(userId);
     }
 }

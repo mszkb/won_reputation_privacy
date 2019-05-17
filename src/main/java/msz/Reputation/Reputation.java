@@ -1,7 +1,5 @@
 package msz.Reputation;
 
-import msz.Message.Reputationtoken;
-
 /**
  * A reputation token holds the rating as a float (a few people vote 3.5 stars for example)
  *                          the comment
@@ -12,7 +10,7 @@ import msz.Message.Reputationtoken;
 public class Reputation {
 
     private String fromReal;
-    private final Reputationtoken reputationtoken;
+    private final byte[] reputationtoken;
     private final float rating;
     private final String comment;
 
@@ -34,7 +32,13 @@ public class Reputation {
         return rating;
     }
 
-    public Reputationtoken getReputationtoken() {
+    /**
+     * The repuationtoken is blinded, only the repuationserver is able
+     * to unblind and verify it.
+     *
+     * @return
+     */
+    public byte[] getReputationtoken() {
         return reputationtoken;
     }
 }
