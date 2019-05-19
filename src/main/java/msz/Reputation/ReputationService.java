@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class ReputationService implements ReputationServer {
+public class ReputationService implements IReputationServer {
     private HashMap<Integer, List<Reputation>> reputation = new HashMap<>();
     private BlindSignature blindingHelper = new BlindSignature();
 

@@ -1,12 +1,10 @@
 package msz.Reputation;
 
 import msz.ConnectionHandler;
-import msz.Message.Reputationtoken;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -14,8 +12,20 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class ReputationBot extends Thread implements ReputationServer {
-    private static final Log LOG = LogFactory.getLog(ReputationBot.class);
+/**
+ * Reputation bot server listens for incoming connection
+ * The connection is delegated to RepuationBotService
+ * RepuationBotService is executed in a seperate Thread
+ * to ensure that the whole process is non-blocking
+ *
+ * Thanks to 'distributed systems' at TU Wien for providing
+ * the template and the test environment
+ *
+ * The shell listens for 'shutdown' to turn the server down
+ * or just kill the process.
+ */
+public class ReputationBotServer extends Thread {
+    private static final Log LOG = LogFactory.getLog(ReputationBotServer.class);
 
     private ExecutorService executor = Executors.newFixedThreadPool(10);
 
@@ -25,30 +35,52 @@ public class ReputationBot extends Thread implements ReputationServer {
     private InputStream in;
     private PrintStream out;
 
-    public ReputationBot() {
+    private int port = 5050;
+
+    /**
+     * This constructor takes the system shell for
+     * reading and writing
+     *
+     * Start with standard port 5050
+     */
+    public ReputationBotServer() {
+        this.in = System.in;
+        this.out = System.out;
     }
 
-    public ReputationBot(InputStream in, PrintStream out) {
+    /**
+     * This constructor takes a give input and printstream
+     * Ideal for testing purpose
+     *
+     * @param in
+     * @param out
+     */
+    public ReputationBotServer(InputStream in, PrintStream out, int port) {
         this.in = in;
         this.out = out;
+        this.port = port;
     }
 
+    /**
+     * This starts a socket on port 5050 and listens
+     * for shutdown.
+     */
+    @Override
     public void run() {
         try {
-            this.serverSocket = new ServerSocket(5050);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+            // Create server socket for incomming connections to port 5050
+            this.serverSocket = new ServerSocket(this.port);
 
-        new Thread(new RepuationBotConnection()).start();
-
-        // direct method listens for shutdown
-        //
-        try {
-            this.direct();
+            // listens for 'shutdown'
+            this.directTerminal();
         } catch (InterruptedException | IOException e) {
             e.printStackTrace();
         }
+
+        // Start Socket on port 5050
+        // Listen for incomming connection to delegate
+        // the handling to RepuationBotService
+        new Thread(new RepuationBotConnection()).start();
     }
 
     /**
@@ -64,11 +96,19 @@ public class ReputationBot extends Thread implements ReputationServer {
                 e.printStackTrace();
             }
         }
+
+        /**
+         * We wait for incoming connections and delegate the handling
+         * to the Thread RepuationBotService
+         *
+         * @throws IOException
+         */
         public void clientAcceptLoop() throws IOException {
             while(!serverSocket.isClosed()) {
-                LOG.info("X Waiting for connection on port " + 5050);
+                LOG.info("X Waiting for connection on port " + port);
                 Socket socket = serverSocket.accept();
-//                executor.execute(ch);
+                IReputationBotService bot = new IReputationBotService();
+                executor.execute(bot);
             }
         }
     }
@@ -80,7 +120,7 @@ public class ReputationBot extends Thread implements ReputationServer {
      * @throws InterruptedException
      * @throws IOException
      */
-    private void direct() throws InterruptedException, IOException {
+    private void directTerminal() throws InterruptedException, IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(this.in));
         PrintWriter out = new PrintWriter(this.out);
         String inputLine;
@@ -100,6 +140,10 @@ public class ReputationBot extends Thread implements ReputationServer {
         this.shutdown();
     }
 
+    /**
+     * After recieving 'shutdown' we close all threads
+     * including the server socket
+     */
     private void shutdown() {
         this.out.println("Shutting down Reputationbot: " );    // TODO which transferserver?
         try {
@@ -117,27 +161,12 @@ public class ReputationBot extends Thread implements ReputationServer {
         }
     }
 
-    @Override
-    public void addRating(int forUser, float rating, String message, byte[] blindToken, byte[] originalHash) throws Exception {
-
-    }
-
-    @Override
-    public byte[] blindAndSign(Reputationtoken token) {
-        return new byte[0];
-    }
-
-    @Override
-    public float getCurrentRating(int userId) {
-        return 0;
-    }
-
-    @Override
-    public List<Reputation> getReputations(int userId) {
-        return null;
-    }
-
+    /**
+     * For single test purpose and for easy start
+     *
+     * @param args
+     */
     public static void main(String[] args) {
-        new ReputationBot(System.in, System.out).run();
+        new ReputationBotServer().start();
     }
 }
