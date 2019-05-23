@@ -6,12 +6,22 @@ import msz.Signer.BlindSignature;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class ReputationService implements IReputationServer {
-    private HashMap<Integer, List<Reputation>> reputation = new HashMap<>();
+public class ReputationService extends Thread implements IReputationServer {
+    private final ReputationStore reputationStore;
+
+    // TODO replace reputation hashmap with the reference to the store
+    private ConcurrentHashMap<Integer, List<Reputation>> reputation = new ConcurrentHashMap<Integer, List<Reputation>>();
     private BlindSignature blindingHelper = new BlindSignature();
 
-    public ReputationService() {
+    public ReputationService(ReputationStore reputationStore) {
+        this.reputationStore = reputationStore;
+    }
+
+    @Override
+    public void run() {
+
     }
 
     @Override

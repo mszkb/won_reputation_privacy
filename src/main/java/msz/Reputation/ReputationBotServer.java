@@ -26,6 +26,8 @@ import org.apache.commons.logging.LogFactory;
  */
 public class ReputationBotServer extends Thread {
     private static final Log LOG = LogFactory.getLog(ReputationBotServer.class);
+    private String otherBotIP;
+    private int otherBotPort;
 
     private ExecutorService executor = Executors.newFixedThreadPool(10);
 
@@ -55,10 +57,12 @@ public class ReputationBotServer extends Thread {
      * @param in
      * @param out
      */
-    public ReputationBotServer(InputStream in, PrintStream out, int port) {
+    public ReputationBotServer(InputStream in, PrintStream out, int port, String otherBotIP, int otherBotPort) {
         this.in = in;
         this.out = out;
         this.port = port;
+        this.otherBotIP = otherBotIP;
+        this.otherBotPort = otherBotPort;
     }
 
     /**
@@ -80,7 +84,7 @@ public class ReputationBotServer extends Thread {
         // Start Socket on port 5050
         // Listen for incomming connection to delegate
         // the handling to RepuationBotService
-        new Thread(new RepuationBotConnection()).start();
+        new Thread(new ReputionBotConnection()).start();
     }
 
     /**
@@ -88,7 +92,7 @@ public class ReputationBotServer extends Thread {
      * Starts the TransferClientHandler Thread after Client connects to
      * given ipadress and port
      */
-    private class RepuationBotConnection implements ConnectionHandler {
+    private class ReputionBotConnection implements ConnectionHandler {
         public void run() {
             try {
                 clientAcceptLoop();
@@ -107,7 +111,7 @@ public class ReputationBotServer extends Thread {
             while(!serverSocket.isClosed()) {
                 LOG.info("X Waiting for connection on port " + port);
                 Socket socket = serverSocket.accept();
-                IReputationBotService bot = new IReputationBotService();
+                ReputationBotAlice bot = new ReputationBotAlice(otherBotIP, otherBotPort);
                 executor.execute(bot);
             }
         }

@@ -48,7 +48,7 @@ public class ReputationBotTest extends TestBase {
     }
 
     @Test
-    public void runAndShutdownTransferServer_createsAndStopsTcpSocketCorrectly() throws Exception {
+    public void runAndShutdownBots_createsAndStopsTcpSocketCorrectly() throws Exception {
         assertThat(bot1, is(notNullValue()));
 
         Thread bot1Thread = new Thread(bot1);
@@ -72,11 +72,67 @@ public class ReputationBotTest extends TestBase {
             bot1Thread.join();
             bot2Thread.join();
         } catch (InterruptedException e) {
-            err.addError(new AssertionError("Transfer server was not terminated correctly"));
+            err.addError(new AssertionError("Bots were not terminated correctly"));
         }
         err.checkThat("Expected tcp socket on port " + bot1port + " to be closed after shutdown",
                 Sockets.isServerSocketOpen(bot1port), is(false));
 
+        err.checkThat("Expected tcp socket on port " + bot2port + " to be closed after shutdown",
+                Sockets.isServerSocketOpen(bot2port), is(false));
+    }
+
+    @Test
+    public void botsConnectToRepuationServer() throws Exception {
+        Thread bot1Thread = new Thread(bot1);
+        Thread bot2Thread = new Thread(bot2);
+        bot1Thread.start();
+        bot2Thread.start();
+
+        // TODO  start reputation server thread
+
+        try {
+            Sockets.waitForSocket("localhost", bot1port, Constants.COMPONENT_STARTUP_WAIT);
+            Sockets.waitForSocket("localhost", bot2port, Constants.COMPONENT_STARTUP_WAIT);
+            // TODO wait for reputation server
+
+        } catch (SocketTimeoutException e) {
+            err.addError(new AssertionError("Expected a TCP server socket on port " + bot1port, e));
+            err.addError(new AssertionError("Expected a TCP server socket on port " + bot2port, e));
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        bot1in.addLine("shutdown");
+        bot2in.addLine("shutdown"); // send "shutdown" command to command line
+        Thread.sleep(Constants.COMPONENT_TEARDOWN_WAIT);
+
+        try {
+            bot1Thread.join();
+            bot2Thread.join();
+            // TODO join reputation server
+        } catch (InterruptedException e) {
+            err.addError(new AssertionError("Bot or server was not terminated correctly"));
+        }
+        err.checkThat("Expected tcp socket on port " + bot1port + " to be closed after shutdown",
+                Sockets.isServerSocketOpen(bot1port), is(false));
         err.checkThat("Expected tcp socket on port " + bot2port + " to be closed after shutdown",
                 Sockets.isServerSocketOpen(bot2port), is(false));
     }
