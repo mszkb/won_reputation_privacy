@@ -83,10 +83,7 @@ public class WonProtocolUnitTests {
         this.r.exchangeHash(sr);                // send it to the requestor
 
         byte[] sigR = this.r.signHash();        // requestor signs supplier hash
-        // TODO blind signature of (certR, sigR)
-
         byte[] sigS = this.s.signHash();        // supplier signs requestor hash
-        // TODO blind signature of (certS, sigS)
 
         assertTrue(this.r.verifySignature(sigS, rr, certS));
         assertTrue(this.s.verifySignature(sigR, sr, certR));

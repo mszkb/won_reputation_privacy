@@ -38,6 +38,8 @@ public class ReputationServer extends Thread {
 
     private int port = 5060;
 
+    private ReputationStore reputationStore = new ReputationStore();
+
     /**
      * This constructor takes the system shell for
      * reading and writing
@@ -108,7 +110,7 @@ public class ReputationServer extends Thread {
             while(!serverSocket.isClosed()) {
                 LOG.info("X Waiting for connection on port " + port);
                 Socket socket = serverSocket.accept();
-                ReputationServer service = new ReputationServer();
+                ReputationService service = new ReputationService(reputationStore);
                 executor.execute(service);
             }
         }
