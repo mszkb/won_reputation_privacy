@@ -25,7 +25,7 @@ public class ReputationBotClientHandler extends Thread implements IRepuationBot 
     }
 
     @Override
-    public void exchangeRandomHash() {
+    public void exchangeRandomHash(String randomHash) {
 
     }
 

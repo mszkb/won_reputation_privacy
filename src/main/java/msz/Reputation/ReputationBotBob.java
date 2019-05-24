@@ -30,6 +30,8 @@ public class ReputationBotBob extends Thread implements IRepuationBot {
 
     private static final Log LOG = LogFactory.getLog(ReputationBotBob.class);
 
+    private final int bobPort = 5055;
+
     private final int otherBotPort;
     private final String otherBotIP;
 
@@ -50,7 +52,7 @@ public class ReputationBotBob extends Thread implements IRepuationBot {
      * Initializes Alice Socket, Incomming Message from Alice, Outgoing Message to Alice
      */
     private void waitForAlice() throws IOException {
-        this.bobSocket = new ServerSocket();
+        this.bobSocket = new ServerSocket(this.bobPort);
         this.aliceSocket = this.bobSocket.accept();
         this.incommingMessage = new BufferedReader(new InputStreamReader(this.aliceSocket.getInputStream()));
         this.outgoingMessage = new PrintWriter(this.aliceSocket.getOutputStream());
@@ -68,55 +70,65 @@ public class ReputationBotBob extends Thread implements IRepuationBot {
 
     private void commandDispatch() throws IOException {
         String inputLine;
+
+        // TODO we wait for alice random Hash
         while ((inputLine = this.incommingMessage.readLine()) != null) {
-            // TODO switch case to different commands
             String incoming = "part1 part2";
             String[] parts = incoming.split(" ");
 
-            // TODO Start connection of other bot in seperateThread
-
             switch (parts[0]) {
-                case "randomHash":
+                case "[1]":
+                    // Alice has sent the random hash
                     exchangeRandomHash(parts[1]);
+                    break;
+                case "[2]":
+                    this.getBlindSignature();
+                    this.createAndExchangeRepuationToken();
+                    this.rateTheTransaction();
             }
         }
     }
 
     @Override
     public void exchangeRandomHash(String randomHash) {
-        // TODO
+        // TODO we generate a random number hashed
+
+        // TODO we send it to Alice
+    }
+
+    /**
+     * Overload function which does not take a number as
+     * an Input. We use the RNG class for randomize stuff
+     */
+    public void exchangeRandomHash() {
     }
 
     @Override
     public void getBlindSignature() {
+        // TODO alice is already done and she is waiting for our token
 
+        // TODO we create the reputation token containing our cert and signed random hash from alice
+
+        // TODO send signed hash and certificate of bob to SP
+
+        // TODO wait for SP answer
+
+        // TODO SP answered with blind signature
     }
 
     @Override
     public void createAndExchangeRepuationToken() {
+        // TODO alice is still waiting
 
+        // TODO we send alice the blind signed reputation token
+
+        // TODO alice knows that bob is finished and she rates bob
     }
 
     @Override
     public void rateTheTransaction() {
+        // TODO we don't need an answer from alice anymore
 
-    }
-
-    private class OtherBotConnectionHandler extends Thread {
-        public OtherBotConnectionHandler() {
-
-        }
-
-        public void run() {
-            // TODO switch case to different commands
-            String incoming = "part1 part2";
-            String[] parts = incoming.split(" ");
-
-            // TODO Start connection of other bot in seperateThread
-
-            switch (parts[0]) {
-                case "randomHash":
-            }
-        }
+        // TODO connect to SP and send rep token, original hash, reputation and message
     }
 }
