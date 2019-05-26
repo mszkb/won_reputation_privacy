@@ -1,6 +1,5 @@
 package msz.Signer;
 
-import msz.Utils.RNG;
 import msz.Utils.RSAUtils;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.CryptoException;
@@ -93,11 +92,11 @@ public class BlindSignature {
      * Then initialize the verifying process by setting up the public key
      * and verify it with the unblinded message if it matches the original message
      *
-     * @param originalMessage
      * @param blindSignature
+     * @param originalMessage
      * @return
      */
-    public boolean verify(byte[] originalMessage, byte[] blindSignature) {
+    public boolean verify(byte[] blindSignature, byte[] originalMessage) {
         byte[] unBlinded = this.unblind(blindSignature);
 
         PSSSigner signer = new PSSSigner(new RSAEngine(), new SHA256Digest(), this.saltL);

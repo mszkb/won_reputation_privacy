@@ -28,6 +28,7 @@ public class ReputationBotServer extends Thread {
     private static final Log LOG = LogFactory.getLog(ReputationBotServer.class);
     private String otherBotIP;
     private int otherBotPort;
+    private String side; // alice or bob
 
     private ExecutorService executor = Executors.newFixedThreadPool(10);
 
@@ -48,6 +49,7 @@ public class ReputationBotServer extends Thread {
     public ReputationBotServer() {
         this.in = System.in;
         this.out = System.out;
+        this.side = "bob";
     }
 
     /**
@@ -57,12 +59,19 @@ public class ReputationBotServer extends Thread {
      * @param in
      * @param out
      */
-    public ReputationBotServer(InputStream in, PrintStream out, int port, String otherBotIP, int otherBotPort) {
+    public ReputationBotServer(InputStream in, PrintStream out, int port, String side) {
         this.in = in;
         this.out = out;
         this.port = port;
-        this.otherBotIP = otherBotIP;
-        this.otherBotPort = otherBotPort;
+//        this.otherBotIP = otherBotIP;
+//        this.otherBotPort = otherBotPort;
+
+        if(side.toLowerCase().equals("alice")) {
+            this.side = "alice";
+        }
+        if(side.toLowerCase().equals("bob")) {
+            this.side = "bob";
+        }
     }
 
     /**
@@ -72,6 +81,7 @@ public class ReputationBotServer extends Thread {
     @Override
     public void run() {
         try {
+            LOG.info("We wait for incomming connections");
             // Create server socket for incomming connections to port 5050
             this.serverSocket = new ServerSocket(this.port);
 
@@ -111,7 +121,18 @@ public class ReputationBotServer extends Thread {
             while(!serverSocket.isClosed()) {
                 LOG.info("X Waiting for connection on port " + port);
                 Socket socket = serverSocket.accept();
-                ReputationBotAlice bot = new ReputationBotAlice(otherBotIP, otherBotPort);
+
+                IRepuationBot bot = null;
+                if(side.equals("alice")) {
+                    LOG.info("We start bot Alice");
+                    System.out.println("We start bot Alice");
+                    bot = new ReputationBotAlice(otherBotIP, otherBotPort);
+                } else if (side.equals("bob")) {
+                    LOG.info("We start bot Bob");
+                    System.out.println("We start bot Bob");
+//                    bot = new ReputationBotBob(socket);
+                }
+
                 executor.execute(bot);
             }
         }

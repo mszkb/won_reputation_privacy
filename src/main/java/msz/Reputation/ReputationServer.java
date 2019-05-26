@@ -58,7 +58,7 @@ public class ReputationServer extends Thread {
      * @param in
      * @param out
      */
-    public ReputationServer(InputStream in, PrintStream out, int port) {
+    public ReputationServer(InputStream in, PrintStream out, int port, String side) {
         this.in = in;
         this.out = out;
         this.port = port;

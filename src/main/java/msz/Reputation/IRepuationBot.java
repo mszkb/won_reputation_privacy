@@ -1,6 +1,6 @@
 package msz.Reputation;
 
-public interface IRepuationBot {
+public interface IRepuationBot extends Runnable {
     /**
      * Creates a random hash and sends it to the other bot
      * This method blocks until we get the random hash from the other bot

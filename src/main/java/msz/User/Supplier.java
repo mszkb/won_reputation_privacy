@@ -13,7 +13,9 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 
-
+/**
+ * Supplier is considered as Bob
+ */
 public class Supplier implements ACL, WonProtocol {
 
     private Params params;
@@ -102,7 +104,7 @@ public class Supplier implements ACL, WonProtocol {
     public Reputationtoken createReputationToken(byte[] sigS) {
         // TODO signHash
         // TODO create Reputationtoken with own cert and signature of Hash
-        return new Reputationtoken(this.certificate, sigS, new byte[0]);
+        return new Reputationtoken(this.certificate, sigS);
     }
 
     @Override
@@ -127,6 +129,6 @@ public class Supplier implements ACL, WonProtocol {
     }
 
     public Reputationtoken createReputationToken(Certificate certS, byte[] sigS) {
-        return new Reputationtoken(certS, sigS, new byte[0]);
+        return new Reputationtoken(certS, sigS);
     }
 }

@@ -19,4 +19,13 @@ public class HashUtils {
 
         return hashedRandomNumber;
     }
+
+    public static String hash(int randomNumber) throws NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(
+                String.valueOf(randomNumber).getBytes(StandardCharsets.UTF_8));
+        String hashedRandomNumber = new String(Hex.encode(hash));
+
+        return hashedRandomNumber;
+    }
 }

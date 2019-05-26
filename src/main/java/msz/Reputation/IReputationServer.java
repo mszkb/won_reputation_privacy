@@ -14,18 +14,17 @@ import java.util.List;
  * - Getting a list of comments and rating as a list
  * - create blindsignatures of reputation token
  */
-public interface IReputationServer {
+public interface IReputationServer extends Runnable {
     /**
      * Adding the rating and a comment for the userID
      * Only if there is a valid token the rating is added
-     *
-     * @param forUser
+     *  @param forUser
      * @param rating
      * @param message
-     * @param blindToken
+     * @param blindRepuationToken
      * @param originalHash
      */
-    void addRating(int forUser, float rating, String message, byte[] blindToken, byte[] originalHash) throws Exception;
+    void addRating(String forUser, String rating, String message, String blindRepuationToken, String originalHash) throws Exception;
     byte[] blindAndSign(Reputationtoken token);
     float getCurrentRating(int userId);
     List<Reputation> getReputations(int userId);

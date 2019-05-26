@@ -24,7 +24,7 @@ import java.net.Socket;
  * Alice waits until she recieves the ReputationToken from Bob
  * Alice sends Bobs ReputationToken with rating and the message to the ReputationServer
  */
-public class ReputationBotAlice extends Thread implements IRepuationBot {
+public class ReputationBotAlice implements IRepuationBot {
 
     private static final Log LOG = LogFactory.getLog(ReputationBotAlice.class);
 

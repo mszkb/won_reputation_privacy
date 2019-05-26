@@ -8,6 +8,7 @@ import msz.Signer.Signer;
 import msz.Utils.ECUtils;
 import msz.TrustedParty.Params;
 import msz.Utils.HashUtils;
+import msz.Utils.RSAUtils;
 import msz.WonProtocol;
 import org.bouncycastle.math.ec.ECPoint;
 
@@ -15,6 +16,9 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 
+/**
+ * Requestor is considered as Alice
+ */
 public class Requestor implements ACL, WonProtocol {
     private final Params params;
     private Certificate certificate;
@@ -121,17 +125,14 @@ public class Requestor implements ACL, WonProtocol {
     @Override
     public byte[] signHash() throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException {
         // TODO sign Hash with the publickey of the certificate
-        Signature signatureOfRandomHash = Signature.getInstance("SHA256withECDSA");
-        signatureOfRandomHash.initSign(this.keyPair.getPrivate());
-        signatureOfRandomHash.update(this.foreignRandomHash.getBytes(StandardCharsets.UTF_8));
-        return signatureOfRandomHash.sign();
+        return RSAUtils.signString(this.keyPair, this.foreignRandomHash);
     }
 
     @Override
     public Reputationtoken createReputationToken(byte[] sigR) {
         // TODO s2ignHash
         // TODO create Reputationtoken with own cert and signature of Hash
-        return new Reputationtoken(this.certificate, sigR, new byte[0]);
+        return new Reputationtoken(this.certificate, sigR);
     }
 
     @Override
@@ -156,6 +157,6 @@ public class Requestor implements ACL, WonProtocol {
     }
 
     public Reputationtoken createReputationToken(Certificate certR, byte[] sigR) {
-        return new Reputationtoken(certR, sigR, new byte[0]);
+        return new Reputationtoken(certR, sigR);
     }
 }

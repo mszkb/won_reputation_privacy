@@ -28,7 +28,7 @@ public class JunitSocketClient implements Closeable {
      * @throws IOException if an I/O error occurred while connecting.
      */
     public JunitSocketClient(int port) throws IOException {
-        this(new Socket("127.0.0.1", port));
+        this(new Socket("localhost", port));
     }
 
     public JunitSocketClient(Socket socket) throws IOException {

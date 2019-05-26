@@ -32,6 +32,6 @@ public class BlindSignatureTest {
     public void test_blindSignature() {
         byte[] message = "My BLIND MESSAGE".getBytes(StandardCharsets.UTF_8);
         byte[] blindedSignature = this.blindSigner.blindAndSign(message);
-        Assert.assertTrue(this.blindSigner.verify(message, blindedSignature));
+        Assert.assertTrue(this.blindSigner.verify(blindedSignature, message));
     }
 }

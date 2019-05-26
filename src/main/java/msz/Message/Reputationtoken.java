@@ -9,12 +9,10 @@ public class Reputationtoken implements Message {
 
     private final Certificate certificate;
     private final byte[] signatureOfHash;
-    private final byte[] signatureOfReputationToken;
 
-    public Reputationtoken(Certificate certificate, byte[] signatureOfHash, byte[] signatureOfReputationToken) {
+    public Reputationtoken(Certificate certificate, byte[] signatureOfHash) {
         this.certificate = certificate;
         this.signatureOfHash = signatureOfHash;
-        this.signatureOfReputationToken = signatureOfReputationToken;
     }
 
     @Override
