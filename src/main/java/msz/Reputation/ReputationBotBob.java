@@ -171,6 +171,8 @@ public class ReputationBotBob implements IRepuationBot {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        spSocket.writeOut("bye");
+        spSocket.close();
 
         this.outMsgAlice.println(blinded);
     }

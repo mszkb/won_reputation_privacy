@@ -36,7 +36,7 @@ public class ReputationServer extends Thread {
     private InputStream in;
     private PrintStream out;
 
-    private int port = 5060;
+    private int port = 5555;
 
     private ReputationStore reputationStore = new ReputationStore();
 
@@ -58,10 +58,9 @@ public class ReputationServer extends Thread {
      * @param in
      * @param out
      */
-    public ReputationServer(InputStream in, PrintStream out, int port, String side) {
+    public ReputationServer(InputStream in, PrintStream out) {
         this.in = in;
         this.out = out;
-        this.port = port;
     }
 
     /**
@@ -110,7 +109,7 @@ public class ReputationServer extends Thread {
             while(!serverSocket.isClosed()) {
                 LOG.info("X Waiting for connection on port " + port);
                 Socket socket = serverSocket.accept();
-                ReputationService service = new ReputationService(reputationStore);
+                ReputationService service = new ReputationService(reputationStore, socket);
                 executor.execute(service);
             }
         }

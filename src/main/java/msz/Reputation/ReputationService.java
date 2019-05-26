@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,12 +26,22 @@ public class ReputationService implements IReputationServer {
     private ConcurrentHashMap<Integer, List<Reputation>> reputation = new ConcurrentHashMap<Integer, List<Reputation>>();
     private BlindSignature blindingHelper = new BlindSignature();
     private ServerSocket bobSocket;
-    private Socket aliceSocket;
+    private Socket socket;
     private BufferedReader incMsgAlice;
     private PrintWriter outMsgAlice;
 
-    public ReputationService(ReputationStore reputationStore) {
+    private BufferedReader in;
+    private PrintWriter out;
+
+    public ReputationService(ReputationStore reputationStore, Socket socket) {
         this.reputationStore = reputationStore;
+        this.socket = socket;
+        try {
+            this.out = new PrintWriter(socket.getOutputStream(), true);
+            this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public ReputationService() {
@@ -38,19 +49,19 @@ public class ReputationService implements IReputationServer {
     }
 
     private void waitForAlice() throws IOException {
-        LOG.info("Wait for Alice, on port " + this.servicePort);
-        this.bobSocket = new ServerSocket(this.servicePort);
-        this.aliceSocket = this.bobSocket.accept();
-        LOG.info("Connection accepted");
-        this.incMsgAlice = new BufferedReader(new InputStreamReader(this.aliceSocket.getInputStream()));
-        this.outMsgAlice = new PrintWriter(this.aliceSocket.getOutputStream(), true);
+//        LOG.info("Wait for Alice, on port " + this.servicePort);
+//        this.bobSocket = new ServerSocket(this.servicePort);
+//        this.aliceSocket = this.bobSocket.accept();
+//        LOG.info("Connection accepted");
+//        this.incMsgAlice = new BufferedReader(new InputStreamReader(this.aliceSocket.getInputStream()));
+//        this.outMsgAlice = new PrintWriter(this.aliceSocket.getOutputStream(), true);
     }
 
     // TODO need client handler
     @Override
     public void run() {
         try {
-            this.waitForAlice();
+//            this.waitForAlice();
             this.commandDispatch();
         } catch (Exception e) {
             e.printStackTrace();
@@ -59,7 +70,7 @@ public class ReputationService implements IReputationServer {
 
     private void commandDispatch() throws Exception {
         String inputLine;
-        while ((inputLine = this.incMsgAlice.readLine()) != null) {
+        while (!socket.isClosed() &&(inputLine = this.in.readLine()) != null) {
             LOG.info("Alice wrote something: " + inputLine);
             String[] parts = inputLine.split(" ");
 
@@ -72,6 +83,9 @@ public class ReputationService implements IReputationServer {
                     break;
                 case "rating":
                     this.addRating(parts[1], parts[2], parts[3], parts[4], parts[5]);
+                    break;
+                case "bye":
+                    socket.close();
                     break;
             }
         }
@@ -97,9 +111,9 @@ public class ReputationService implements IReputationServer {
 
     public void verify(byte[] blindRepuationToken, byte[] originalHash) throws Exception {
         if(this.blindingHelper.verify(blindRepuationToken, originalHash)) {
-            this.outMsgAlice.println("valid");
+            this.out.println("valid");
         } else {
-            this.outMsgAlice.println("invalid");
+            this.out.println("invalid");
             throw new Exception("Reputationtoken is not valid");
         }
     }
@@ -111,7 +125,7 @@ public class ReputationService implements IReputationServer {
 
     public byte[] blindAndSign(byte[] tokenBytes) {
         byte[] blindSignature = this.blindingHelper.blindAndSign(tokenBytes);
-        this.outMsgAlice.println(blindSignature);
+        this.out.println(blindSignature);
         return blindSignature;
     }
 

@@ -42,5 +42,13 @@ public class WrappedSocket {
         LOG.info(s);
         return s;
     }
+
+    public void close() {
+        try {
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
 

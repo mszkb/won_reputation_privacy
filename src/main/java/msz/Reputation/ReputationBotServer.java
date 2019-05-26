@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
  *
  * The shell listens for 'shutdown' to turn the server down
  * or just kill the process.
+ * @deprecated 
  */
 public class ReputationBotServer extends Thread {
     private static final Log LOG = LogFactory.getLog(ReputationBotServer.class);
