@@ -6,21 +6,28 @@ import msz.TrustedParty.Params;
 import msz.TrustedParty.TrustedParty;
 import msz.User.Requestor;
 import msz.User.Supplier;
+import msz.Utils.HashUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SignatureException;
 
 import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 /**
  * This test class tests the interaction with client and server without
  */
 public class WonProtocolE2ETest {
+    private static final Log LOG = LogFactory.getLog(WonProtocolE2ETest.class);
+
     private Requestor r;
     private Supplier s;
     private Params params;
@@ -42,7 +49,30 @@ public class WonProtocolE2ETest {
         this.blindSigner = new BlindSignature();
     }
 
+    @Test
+    public void sign_randomHash() throws NoSuchAlgorithmException {
+        String randomHashAlice = HashUtils.generateRandomHash();
+        LOG.info("original hash bytes " + randomHashAlice.getBytes());
 
+        byte[] blinded = this.blindSigner.blindAndSign(randomHashAlice.getBytes(StandardCharsets.UTF_8));
+        LOG.info(randomHashAlice + " blinded to " + blinded);
+
+        LOG.info("verify blinded: " + blinded + " with " + randomHashAlice);
+        assertTrue(this.blindSigner.verify(blinded, randomHashAlice.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Test
+    public void sign_randomHash_failVerify() throws NoSuchAlgorithmException {
+        String randomHashAlice = HashUtils.generateRandomHash();
+        String otherHashAlice = HashUtils.generateRandomHash();
+        LOG.info("original hash bytes" + randomHashAlice.getBytes());
+
+        byte[] blinded = this.blindSigner.blindAndSign(randomHashAlice.getBytes());
+        LOG.info(randomHashAlice + " blinded to " + blinded);
+
+        LOG.info("verify blinded: " + blinded + " with " + randomHashAlice.getBytes());
+        assertFalse(this.blindSigner.verify(blinded, otherHashAlice.getBytes()));
+    }
 
     /**
      * This test verifies the process of creating and exchanging reputation tokens

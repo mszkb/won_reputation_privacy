@@ -87,6 +87,8 @@ public class ReputationBotBob implements IRepuationBot {
 
         this.incMsgAlice = new BufferedReader(new InputStreamReader(this.aliceSocket.getInputStream()));
         this.outMsgAlice = new PrintWriter(this.aliceSocket.getOutputStream(), true);
+
+        this.outMsgAlice.println("hi");
     }
 
     @Override

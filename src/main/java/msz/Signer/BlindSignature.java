@@ -1,6 +1,9 @@
 package msz.Signer;
 
+import msz.Reputation.ReputationService;
 import msz.Utils.RSAUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.CryptoException;
 import org.bouncycastle.crypto.digests.SHA256Digest;
@@ -21,6 +24,8 @@ import java.math.BigInteger;
  *          https://gist.github.com/mjethani/e6d8b3e458ff59ef5b6e
  */
 public class BlindSignature {
+    private static final Log LOG = LogFactory.getLog(BlindSignature.class);
+
     private final RSABlindingParameters blindingParameters;
     private final int saltL = 10;
     private final AsymmetricKeyParameter privateKey;
@@ -98,6 +103,7 @@ public class BlindSignature {
      */
     public boolean verify(byte[] blindSignature, byte[] originalMessage) {
         byte[] unBlinded = this.unblind(blindSignature);
+        LOG.info("unblinded: " + unBlinded);
 
         PSSSigner signer = new PSSSigner(new RSAEngine(), new SHA256Digest(), this.saltL);
         signer.init(false, this.publicKey);

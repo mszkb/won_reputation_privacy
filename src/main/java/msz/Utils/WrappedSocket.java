@@ -43,6 +43,13 @@ public class WrappedSocket {
         return s;
     }
 
+    public byte[] readInBytes() throws IOException {
+        byte[] b = new byte[256];
+        int count = socket.getInputStream().read(b, 0 ,256);
+        LOG.info(b);
+        return b;
+    }
+
     public void close() {
         try {
             socket.close();
