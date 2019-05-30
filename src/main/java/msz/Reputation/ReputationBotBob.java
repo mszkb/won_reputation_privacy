@@ -117,7 +117,7 @@ public class ReputationBotBob implements IRepuationBot {
                     break;
                 case "[2]":
                     this.blindedReputationToken = parts[2];
-                    LOG.info("we got the reputation token");
+                    LOG.info("Bob got the reputation token");
                     this.getBlindSignature();
                     this.createAndExchangeRepuationToken();
                     this.rateTheTransaction();

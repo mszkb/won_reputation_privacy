@@ -83,7 +83,7 @@ public class ReputationService implements IReputationServer {
                     this.blindAndSign(parts[1].getBytes());
                     break;
                 case "verify":
-                    this.verify(Hex.decode(parts[1]), parts[2].getBytes());
+                    this.verify(Base64.getDecoder().decode(parts[1]), parts[2].getBytes());
                     break;
                 case "rating":
                     this.addRating(parts[1], parts[2], parts[3], parts[4], parts[5]);
@@ -130,7 +130,7 @@ public class ReputationService implements IReputationServer {
     }
 
     public String blindAndSign(byte[] tokenBytes) {
-        String blindSignature = new String(Hex.encode(this.blindingHelper.blindAndSign(tokenBytes)));
+        String blindSignature = Base64.getEncoder().encodeToString(this.blindingHelper.blindAndSign(tokenBytes));
         this.out.println(blindSignature);
         return blindSignature;
     }
