@@ -88,11 +88,16 @@ public class ReputationService implements IReputationServer {
                 case "blind":
                     this.blindAndSign(MessageUtils.decodeRT(parts[1]));
                     break;
+                case "blindraw":
+                    this.blindAndSign(parts[1].getBytes());
+                    break;
                 case "verify":
                     this.verify(
                             MessageUtils.decodeToBytes(parts[1]),
                             MessageUtils.decodeRT(parts[2]));
                     break;
+                case "verifyraw":
+                    this.verify(MessageUtils.decodeToBytes(parts[1]), parts[2].getBytes());
                 case "rating":
                     this.addRating(parts[1], parts[2], parts[3], parts[4], parts[5]);
                     break;

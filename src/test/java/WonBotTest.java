@@ -100,9 +100,9 @@ public class WonBotTest extends TestBase {
         WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort);
 
         alice.readIn(); // we wait until server is ready - server sends "hi"
-        alice.writeOut("blind " + randomHashAlice);
+        alice.writeOut("blindraw " + randomHashAlice);
         String blindedHash = alice.readIn();
-        alice.writeOut("verify " + blindedHash + " " + randomHashAlice);
+        alice.writeOut("verifyraw " + blindedHash + " " + randomHashAlice);
         assertThat(alice.readIn(), is("valid"));
     }
     @Test
@@ -116,9 +116,9 @@ public class WonBotTest extends TestBase {
         WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort);
 
         alice.readIn(); // we wait until server is ready - server sends "hi"
-        alice.writeOut("blind " + randomHashAlice);
+        alice.writeOut("blindraw " + randomHashAlice);
         String blindedHash = alice.readIn();
-        alice.writeOut("verify " + blindedHash + " aaa" + randomHashAlice);
+        alice.writeOut("verifyraw " + blindedHash + " aaa" + randomHashAlice);
         assertThat(alice.readIn(), is("invalid"));
     }
 
