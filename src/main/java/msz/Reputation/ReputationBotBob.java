@@ -2,6 +2,7 @@ package msz.Reputation;
 
 import msz.Message.Certificate;
 import msz.Message.Reputationtoken;
+import msz.Signer.BlindSignature;
 import msz.Utils.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -152,26 +153,29 @@ public class ReputationBotBob implements IRepuationBot {
     @Override
     public void getBlindSignature() {
         // TODO alice is already done and she is waiting for our token
-        byte[] signedHashBob = null;
+        byte[] signedHashAlice = null;
         try {
-            signedHashBob = RSAUtils.signString(this.bobKeyPair.getPrivate(), randomHashFromAlice);
+            signedHashAlice = RSAUtils.signString(this.bobKeyPair.getPrivate(), randomHashFromAlice);
         } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
             e.printStackTrace();
         }
 
         // TODO we create the reputation token containing our cert and signed random hash from alice
-        Reputationtoken tokenForAlice = new Reputationtoken(certificateBob, signedHashBob);
-
+        Reputationtoken tokenForAlice = new Reputationtoken(certificateBob, signedHashAlice);
+        String encodedTokenForAlice = null;
         // TODO send signed hash and certificate of bob to SP
 //        byte[] blindedReputationToken = this.blindSigner.blindAndSign(tokenForBob.getBytes());
         String blinded = null;
         try {
             blinded = blindTokenForAlice(tokenForAlice);
             Thread.sleep(2000);
+            encodedTokenForAlice = MessageUtils.toString(tokenForAlice);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        this.outMsgAlice.println(blinded);
+
+        String messageBack = "[2] " + blinded + " " + encodedTokenForAlice;
+        this.outMsgAlice.println(messageBack);
     }
 
     private String blindTokenForAlice(Reputationtoken tokenForAlice) throws IOException {

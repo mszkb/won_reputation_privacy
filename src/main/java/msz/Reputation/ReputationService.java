@@ -45,6 +45,12 @@ public class ReputationService implements IReputationServer {
         }
     }
 
+    public ReputationService(BlindSignature blindSigner) {
+        this(5555);
+        this.standalone = true;
+        this.blindingHelper = blindSigner;
+    }
+
     public ReputationService() {
         this(5555);
         this.standalone = true;
@@ -148,13 +154,20 @@ public class ReputationService implements IReputationServer {
     @Override
     public String blindAndSign(Reputationtoken token) {
         String blindSignature =
-                Base64.getEncoder().encodeToString(this.blindingHelper.blindAndSign(token.getBytes()));
+                MessageUtils.encodeBytes(
+                        this.blindingHelper.blindAndSign(token.getBytes())
+                );
+
         this.out.println(blindSignature);
         return blindSignature;
     }
 
     public String blindAndSign(byte[] tokenBytes) {
-        String blindSignature = Base64.getEncoder().encodeToString(this.blindingHelper.blindAndSign(tokenBytes));
+        String blindSignature =
+                MessageUtils.encodeBytes(
+                        this.blindingHelper.blindAndSign(tokenBytes)
+                );
+
         this.out.println(blindSignature);
         return blindSignature;
     }
