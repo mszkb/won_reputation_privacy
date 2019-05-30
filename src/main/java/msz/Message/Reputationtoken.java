@@ -2,10 +2,13 @@ package msz.Message;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
+import java.util.Base64;
 
 public class Reputationtoken implements Message {
+    private final static long serialVersionUID = 1;
 
     private final Certificate certificate;
     private final byte[] signatureOfHash;

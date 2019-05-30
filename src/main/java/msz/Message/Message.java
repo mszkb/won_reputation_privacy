@@ -1,6 +1,8 @@
 package msz.Message;
 
-public interface Message {
+import java.io.Serializable;
+
+public interface Message extends Serializable {
     byte[] getBytes();
     byte[] getSignature();
 }

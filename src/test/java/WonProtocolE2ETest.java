@@ -107,8 +107,8 @@ public class WonProtocolE2ETest {
         Reputationtoken RTs = this.s.createReputationToken(certS, sigS);  // supplier creates Rep token with own cert and the signed hash from requestor
         byte[] blindRTs = this.blindSigner.blindAndSign(RTs.getBytes());
 
-        this.r.exchangeReputationToken(blindRTr);
-        this.s.exchangeReputationToken(blindRTs);
+        this.r.exchangeReputationToken(RTr);
+        this.s.exchangeReputationToken(RTs);
 
         // TODO interact with SP to get a blindsignature (RSA) of {certR, sigR(sr)}
         // check signature of RT, cert and hash ... provide original number from the other user

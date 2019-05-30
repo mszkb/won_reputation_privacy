@@ -8,10 +8,7 @@ import msz.TrustedParty.Params;
 import msz.TrustedParty.TrustedParty;
 import msz.User.Requestor;
 import msz.User.Supplier;
-import msz.Utils.ECUtils;
-import msz.Utils.HashUtils;
-import msz.Utils.RSAUtils;
-import msz.Utils.WrappedSocket;
+import msz.Utils.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.bouncycastle.util.encoders.Hex;
@@ -22,10 +19,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
+import java.security.*;
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -128,12 +122,37 @@ public class WonBotTest extends TestBase {
         assertThat(alice.readIn(), is("invalid"));
     }
 
+    @Test
+    public void runSP_testBlindAndSign_valid_reputationToken() throws InterruptedException, NoSuchAlgorithmException, IOException, NoSuchProviderException, InvalidAlgorithmParameterException, SignatureException, InvalidKeyException {
+        this.reputationServiceThread.start();
+
+        // our test class proceeds too fast so we need to wait
+        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
+
+        // These are the steps to create a blind signature out of the Reputation-Token
+        KeyPair aliceKeyPair        = ECUtils.generateKeyPair();
+        Certificate certAlice       = this.sp.registerClient(aliceKeyPair.getPublic());
+        String randomHashAlice      = HashUtils.generateRandomHash();
+        String randomHashBob        = HashUtils.generateRandomHash();
+        byte[] signedHashBob        = RSAUtils.signString(aliceKeyPair, randomHashBob);
+        Reputationtoken tokenForBob = new Reputationtoken(certAlice, signedHashBob);
+        String encodedToken         = MessageUtils.toString(tokenForBob);
+
+        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort);
+        alice.readIn(); // we wait until server is ready - server sends "hi"
+        alice.writeOut("blind " + encodedToken);
+        String blindedHash = alice.readIn();
+        alice.writeOut("verify " + blindedHash + " " + encodedToken);
+        assertThat(alice.readIn(), is("valid"));
+    }
+
     /**
      * In this test case we run alice and test the protocol
      * on bob's side.
      */
     @Test
     public void runBob_testProtocol() throws Exception {
+        this.reputationServiceThread.start();
         this.bobThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
@@ -152,20 +171,30 @@ public class WonBotTest extends TestBase {
         byte[] signedHashBob = RSAUtils.signString(aliceKeyPair, randomHashBob);
         // create repuation token for bob
         Reputationtoken tokenForBob = new Reputationtoken(certAlice, signedHashBob);
+        String encodedToken = MessageUtils.toString(tokenForBob);
         // blind sign the reputation token by the SP
         byte[] blindedReputationToken = this.blindSigner.blindAndSign(tokenForBob.getBytes());
-        String blindRTinHex = new String(Hex.encode(blindedReputationToken));
+        String blindRTinHex = MessageUtils.encodeBytes(blindedReputationToken);
 
         // send reputation-token to bob
-        alice.writeOut("[2] " + blindRTinHex + " " + randomHashAlice);
+        alice.writeOut("[2] " + blindRTinHex + " " + encodedToken);
 
         // we wait for bobs answer - reputation token
-        String blindedRepuationTokenFromBob = alice.readIn();
+        String repuationTokenFromBob = alice.readIn();
+        LOG.info("We got the reptoken from bob");
 
+        this.reputationService = new ReputationService();
+        this.reputationServiceThread.join();
+        this.reputationServiceThread = new Thread(reputationService);
+        this.reputationServiceThread.start();
+        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
         WrappedSocket sp = new WrappedSocket("localhost", reputationServicePort);
-        sp.writeOut("verify " + blindedRepuationTokenFromBob + " " + randomHashAlice);
+        LOG.info("Wait until Reputation service is ready");
+        sp.readIn();
+        sp.writeOut("verify " + repuationTokenFromBob + " " + encodedToken);
         assertThat(sp.readIn(), is("valid"));
         sp.writeOut("rating ");
+        sp.close();
     }
 
     @Test

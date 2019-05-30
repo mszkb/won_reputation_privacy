@@ -2,10 +2,7 @@ package msz.Reputation;
 
 import msz.Message.Certificate;
 import msz.Message.Reputationtoken;
-import msz.Utils.ECUtils;
-import msz.Utils.HashUtils;
-import msz.Utils.RSAUtils;
-import msz.Utils.WrappedSocket;
+import msz.Utils.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -13,6 +10,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.*;
+import java.util.Base64;
 
 /**
  * This is the recieving Bot, in WoN we describe it as the Supplier
@@ -49,7 +47,8 @@ public class ReputationBotBob implements IRepuationBot {
 
     private String randomHashFromAlice = null;
     private String randomHashBobOriginal = null;
-    private String blindedReputationToken;
+    private byte[] blindedReputationToken;
+    private Reputationtoken reputationTokenFromAlice;
 
     public ReputationBotBob(Socket socket, Certificate certificateBob) {
         try {
@@ -116,7 +115,8 @@ public class ReputationBotBob implements IRepuationBot {
                     exchangeRandomHash(parts[1]);
                     break;
                 case "[2]":
-                    this.blindedReputationToken = parts[2];
+                    this.blindedReputationToken = MessageUtils.decodeToBytes(parts[1]);
+                    this.reputationTokenFromAlice = MessageUtils.decodeRT(parts[2]);
                     LOG.info("Bob got the reputation token");
                     this.getBlindSignature();
                     this.createAndExchangeRepuationToken();
@@ -164,19 +164,24 @@ public class ReputationBotBob implements IRepuationBot {
 
         // TODO send signed hash and certificate of bob to SP
 //        byte[] blindedReputationToken = this.blindSigner.blindAndSign(tokenForBob.getBytes());
-        WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort);
-        spSocket.writeOut("blind " + tokenForAlice);
-        String blinded = "";
+        String blinded = null;
         try {
-            // TODO wait for SP answer
-            blinded = spSocket.readIn();
-        } catch (IOException e) {
+            blinded = blindTokenForAlice(tokenForAlice);
+            Thread.sleep(2000);
+        } catch (Exception e) {
             e.printStackTrace();
         }
+        this.outMsgAlice.println(blinded);
+    }
+
+    private String blindTokenForAlice(Reputationtoken tokenForAlice) throws IOException {
+        WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort);
+        spSocket.readIn(); // we wait for 'hi' to make sure we are able to write
+        spSocket.writeOut("blind " + MessageUtils.toString(tokenForAlice));
+        String blinded = spSocket.readIn();
         spSocket.writeOut("bye");
         spSocket.close();
-
-        this.outMsgAlice.println(blinded);
+        return blinded;
     }
 
     @Override

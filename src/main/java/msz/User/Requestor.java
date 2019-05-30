@@ -132,6 +132,8 @@ public class Requestor implements ACL, WonProtocol {
     public Reputationtoken createReputationToken(byte[] sigR) {
         // TODO s2ignHash
         // TODO create Reputationtoken with own cert and signature of Hash
+
+        // TODO save blinded token in our instance for further checks
         return new Reputationtoken(this.certificate, sigR);
     }
 
@@ -152,7 +154,7 @@ public class Requestor implements ACL, WonProtocol {
     }
 
     @Override
-    public void exchangeReputationToken(byte[] RTs) {
+    public void exchangeReputationToken(Reputationtoken RTs) {
 
     }
 

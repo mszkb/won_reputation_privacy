@@ -25,7 +25,7 @@ public interface IReputationServer extends Runnable {
      * @param originalHash
      */
     void addRating(String forUser, String rating, String message, String blindRepuationToken, String originalHash) throws Exception;
-    byte[] blindAndSign(Reputationtoken token);
+    String blindAndSign(Reputationtoken token);
     float getCurrentRating(int userId);
     List<Reputation> getReputations(int userId);
 }

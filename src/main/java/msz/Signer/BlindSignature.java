@@ -1,5 +1,6 @@
 package msz.Signer;
 
+import msz.Message.Reputationtoken;
 import msz.Reputation.ReputationService;
 import msz.Utils.RSAUtils;
 import org.apache.commons.logging.Log;
@@ -16,6 +17,7 @@ import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.bouncycastle.crypto.signers.PSSSigner;
 
 import java.math.BigInteger;
+import java.util.Base64;
 
 /**
  * This class creates blind signatures and verifies them.
@@ -86,7 +88,7 @@ public class BlindSignature {
      * @param blindedMessage
      * @return unblinded Message
      */
-    private byte[] unblind(byte[] blindedMessage) {
+    public byte[] unblind(byte[] blindedMessage) {
         RSABlindingEngine rsaBlindedEngine = new RSABlindingEngine();
         rsaBlindedEngine.init(false, this.blindingParameters);
         return rsaBlindedEngine.processBlock(blindedMessage, 0, blindedMessage.length);
@@ -103,11 +105,14 @@ public class BlindSignature {
      */
     public boolean verify(byte[] blindSignature, byte[] originalMessage) {
         byte[] unBlinded = this.unblind(blindSignature);
-        LOG.info("unblinded: " + unBlinded);
 
         PSSSigner signer = new PSSSigner(new RSAEngine(), new SHA256Digest(), this.saltL);
         signer.init(false, this.publicKey);
         signer.update(originalMessage, 0, originalMessage.length);
         return signer.verifySignature(unBlinded);
+    }
+
+    public boolean verify(byte[] blindSignature, Reputationtoken originalToken) {
+        return this.verify(blindSignature, originalToken.getBytes());
     }
 }

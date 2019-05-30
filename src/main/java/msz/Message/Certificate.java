@@ -1,9 +1,13 @@
 package msz.Message;
 
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
+import java.util.Base64;
 
 public class Certificate implements Message {
+    private final static long serialVersionUID = 1;
+
     private PublicKey publicKey;   // user's public key
     private int ID;             // Account Information
     private byte[] signature;
@@ -27,5 +31,10 @@ public class Certificate implements Message {
 
     public byte[] getSignature() {
         return this.signature;
+    }
+
+    @Override
+    public String toString() {
+        return "Public Key is: " + this.publicKey + ", whith the registration ID: " + this.ID;
     }
 }

@@ -2,9 +2,9 @@ package msz.Reputation;
 
 import msz.Message.Reputationtoken;
 import msz.Signer.BlindSignature;
+import msz.Utils.MessageUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.bouncycastle.util.encoders.Hex;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,7 +12,6 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -23,7 +22,7 @@ public class ReputationService implements IReputationServer {
     private ReputationStore reputationStore = null;
     private static final Log LOG = LogFactory.getLog(ReputationService.class);
 
-    private final int servicePort = 5555;
+    private final int servicePort;
 
     // TODO replace reputation hashmap with the reference to the store
     private ConcurrentHashMap<Integer, List<Reputation>> reputation = new ConcurrentHashMap<Integer, List<Reputation>>();
@@ -35,6 +34,7 @@ public class ReputationService implements IReputationServer {
     private PrintWriter out;
 
     public ReputationService(ReputationStore reputationStore, Socket socket) {
+        this(5555);
         this.reputationStore = reputationStore;
         this.socket = socket;
         try {
@@ -46,7 +46,12 @@ public class ReputationService implements IReputationServer {
     }
 
     public ReputationService() {
+        this(5555);
         this.standalone = true;
+    }
+
+    public ReputationService(int port) {
+        this.servicePort = port;
     }
 
     private void waitForAlice() throws IOException {
@@ -67,6 +72,7 @@ public class ReputationService implements IReputationServer {
                 this.waitForAlice();
             }
             this.commandDispatch();
+            LOG.info("Reputation Instance is closed");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -75,21 +81,24 @@ public class ReputationService implements IReputationServer {
     private void commandDispatch() throws Exception {
         String inputLine;
         while (!socket.isClosed() &&(inputLine = this.in.readLine()) != null) {
-            LOG.info("Alice wrote something: " + inputLine);
+            LOG.info("Some User wrote us: " + inputLine);
             String[] parts = inputLine.split(" ");
 
             switch (parts[0]) {
                 case "blind":
-                    this.blindAndSign(parts[1].getBytes());
+                    this.blindAndSign(MessageUtils.decodeRT(parts[1]));
                     break;
                 case "verify":
-                    this.verify(Base64.getDecoder().decode(parts[1]), parts[2].getBytes());
+                    this.verify(
+                            MessageUtils.decodeToBytes(parts[1]),
+                            MessageUtils.decodeRT(parts[2]));
                     break;
                 case "rating":
                     this.addRating(parts[1], parts[2], parts[3], parts[4], parts[5]);
                     break;
                 case "bye":
                     socket.close();
+                    bobSocket.close();
                     break;
             }
         }
@@ -122,9 +131,19 @@ public class ReputationService implements IReputationServer {
         }
     }
 
+    public void verify(byte[] blindRepuationToken, Reputationtoken reputationtoken) throws Exception {
+        if(this.blindingHelper.verify(blindRepuationToken, reputationtoken)) {
+            this.out.println("valid");
+        } else {
+            this.out.println("invalid");
+            throw new Exception("Reputationtoken is not valid");
+        }
+    }
+
     @Override
-    public byte[] blindAndSign(Reputationtoken token) {
-        byte[] blindSignature = this.blindingHelper.blindAndSign(token.getBytes());
+    public String blindAndSign(Reputationtoken token) {
+        String blindSignature =
+                Base64.getEncoder().encodeToString(this.blindingHelper.blindAndSign(token.getBytes()));
         this.out.println(blindSignature);
         return blindSignature;
     }
