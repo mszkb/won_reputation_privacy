@@ -70,6 +70,8 @@ public class WonBotTest extends TestBase {
     private Params params;
     private BlindSignature blindSigner;
     private Signer sp;
+    private Thread bobThread;
+    private Thread reputationServiceThread;
 
     @Before
     public void setUp() throws InterruptedException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
@@ -79,11 +81,13 @@ public class WonBotTest extends TestBase {
         this.sp = new Signer(this.params);
         this.blindSigner = new BlindSignature();
 
+        this.reputationService = new ReputationService();
+        this.reputationServiceThread = new Thread(reputationService);
 
-
-
-
-
+        KeyPair bobKeyPair = ECUtils.generateKeyPair();
+        Certificate certBob = this.sp.registerClient(bobKeyPair.getPublic());
+        this.bob = new ReputationBotBob(bot1in, bot1out, certBob);
+        this.bobThread = new Thread(bob);
 
 //        new Thread(transfer).start();
 //        new Thread(component).start();
@@ -93,32 +97,33 @@ public class WonBotTest extends TestBase {
 
     @Test
     public void runSP_testBlindAndSign_valid() throws IOException, NoSuchAlgorithmException, InterruptedException {
-        reputationService = new ReputationService();
-        Thread reputationServiceThread = new Thread(reputationService);
-        reputationServiceThread.start();
-        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT); // our test class proceeds too fast so we need to wait
+        this.reputationServiceThread.start();
+
+        // our test class proceeds too fast so we need to wait
+        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
         String randomHashAlice = HashUtils.generateRandomHash();
         WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort);
+
         alice.readIn(); // we wait until server is ready - server sends "hi"
         alice.writeOut("blind " + randomHashAlice);
-        String blindedHash = alice.readIn(); // encode bytes into hex
+        String blindedHash = alice.readIn();
         alice.writeOut("verify " + blindedHash + " " + randomHashAlice);
         assertThat(alice.readIn(), is("valid"));
     }
-
     @Test
     public void runSP_testBlindAndSign_invalid() throws IOException, NoSuchAlgorithmException, InterruptedException {
-        reputationService = new ReputationService();
-        Thread reputationServiceThread = new Thread(reputationService);
-        reputationServiceThread.start();
-        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT); // our test class proceeds too fast so we need to wait
+        this.reputationServiceThread.start();
+
+        // our test class proceeds too fast so we need to wait
+        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
         String randomHashAlice = HashUtils.generateRandomHash();
         WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort);
+
         alice.readIn(); // we wait until server is ready - server sends "hi"
         alice.writeOut("blind " + randomHashAlice);
-        String blindedHash = alice.readIn(); // encode bytes into hex
+        String blindedHash = alice.readIn();
         alice.writeOut("verify " + blindedHash + " aaa" + randomHashAlice);
         assertThat(alice.readIn(), is("invalid"));
     }
@@ -126,20 +131,13 @@ public class WonBotTest extends TestBase {
     /**
      * In this test case we run alice and test the protocol
      * on bob's side.
-     *
-     * @throws Exception
      */
     @Test
     public void runBob_testProtocol() throws Exception {
-        KeyPair bobKeyPair = ECUtils.generateKeyPair();
-        Certificate certBob = this.sp.registerClient(bobKeyPair.getPublic());
-        bob = new ReputationBotBob(bot1in, bot1out, certBob);
-        Thread bobThread = new Thread(bob);
-        bobThread.start();
+        this.bobThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
-        // TODO Alice is our Thread which sends answers
-
+        // Alice is our Test-method, we begin to send Bob our random hash
         KeyPair aliceKeyPair = ECUtils.generateKeyPair();
         Certificate certAlice = this.sp.registerClient(aliceKeyPair.getPublic());
         String randomHashAlice = HashUtils.generateRandomHash();
