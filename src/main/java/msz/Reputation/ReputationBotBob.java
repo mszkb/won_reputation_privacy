@@ -159,7 +159,7 @@ public class ReputationBotBob implements IRepuationBot {
         this.originalTokenForAlice = new Reputationtoken(certificateBob, signedHashAlice);
         try {
             this.blindedTokenForAlice = blindTokenForAlice(originalTokenForAlice);
-            Thread.sleep(2000);
+            Thread.sleep(500);
         } catch (Exception e) {
             e.printStackTrace();
         }

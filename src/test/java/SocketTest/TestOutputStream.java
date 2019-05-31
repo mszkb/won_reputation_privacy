@@ -87,7 +87,7 @@ public class TestOutputStream extends PrintStream {
      * @throws InterruptedException if the polling was interrupted
      */
     public String listen() throws InterruptedException {
-        return listen(1, TimeUnit.SECONDS);
+        return listen(5, TimeUnit.SECONDS);
     }
 
     public String listen(long timeout, TimeUnit timeUnit) throws InterruptedException {

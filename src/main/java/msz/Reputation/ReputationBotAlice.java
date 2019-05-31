@@ -74,7 +74,7 @@ public class ReputationBotAlice implements IRepuationBot {
             e.printStackTrace();
         }
         this.incMsgWonNode = new BufferedReader(new InputStreamReader(incMsgWonNode));
-        this.outMsgWonNode = new PrintWriter(outMsgWonNode);
+        this.outMsgWonNode = new PrintWriter(outMsgWonNode, true);
 
         this.incMsgBob = this.incMsgWonNode;
         this.outMsgBob = this.outMsgWonNode;
@@ -148,7 +148,7 @@ public class ReputationBotAlice implements IRepuationBot {
         this.originalTokenForBob = new Reputationtoken(certificateAlice, signedHashBob);
         try {
             this.blindedTokenForBob = blindTokenForBob(originalTokenForBob);
-            Thread.sleep(2000);
+            Thread.sleep(500);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -209,11 +209,11 @@ public class ReputationBotAlice implements IRepuationBot {
     }
 
     private boolean verifyBobToken() throws IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-        PublicKey alicePublicKey = this.originalReputationTokenFromBob.getPubkeyFromCert();
+        PublicKey bobPublicKey = this.originalReputationTokenFromBob.getPubkeyFromCert();
         boolean validSignatureOfRandomHash = RSAUtils.verifySignature(
                 this.originalReputationTokenFromBob.getSignatureOfHash(),
                 this.randomHashAliceOriginal,
-                alicePublicKey);
+                bobPublicKey);
 
         if(!validSignatureOfRandomHash) {
             throw new SignatureException("Signature is invalid of the random element");
