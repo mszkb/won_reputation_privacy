@@ -49,30 +49,27 @@ public class WonBotTest extends TestBase {
     private TestInputStream bot2in = new TestInputStream();
     private TestOutputStream bot2out = new TestOutputStream();
 
-    private IRepuationBot bot1;
-    private int alicePort = 5050;
+    // Params for blind signature and issuing certificates
+    private Params params;
+    private Signer sp;
 
-    private ReputationBotServer bot2;
-    private int bobPort = 5055;
-
-    private ReputationService reputationService;
+    // Reputation server used for blinding and verifying tokens
     private int reputationServicePort = 5555;
     private ReputationServer reputationServer;
     private Thread reputationServerThread;
 
-    private TestInputStream repIn = new TestInputStream();
-    private TestOutputStream repOut = new TestOutputStream();
-
     private ReputationBotBob bob;
-    private Params params;
-    private BlindSignature blindSigner;
-    private Signer sp;
+    private int bobPort = 5055;
     private Thread bobThread;
-    private Thread reputationServiceThread;
     private KeyPair bobKeyPair;
-    private KeyPair aliceKeyPair;
     private Certificate certBob;
+
+    private ReputationBotAlice alice;
+    private int alicePort = 5050;
+    private Thread aliceThread;
+    private KeyPair aliceKeyPair;
     private Certificate certAlice;
+
 
     @Before
     public void setUp() throws InterruptedException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
@@ -91,6 +88,9 @@ public class WonBotTest extends TestBase {
 
         this.bob = new ReputationBotBob(bot1in, bot1out, certBob);
         this.bobThread = new Thread(bob);
+
+        this.alice = new ReputationBotBob(bot1in, bot1out, certBob);
+        this.aliceThread = new Thread(bob);
 
         this.aliceKeyPair = ECUtils.generateKeyPair();
         this.certAlice = this.sp.registerClient(aliceKeyPair.getPublic());
@@ -250,41 +250,50 @@ public class WonBotTest extends TestBase {
     }
     @Test
     public void runAlice_testProtocol() throws Exception {
-//        assertThat(bot1, is(notNullValue()));
-//
-//        Thread bobThread = new Thread(bot2);
-//        bobThread.start();
-//        try {
-//            Sockets.waitForSocket("localhost", bobPort, Constants.COMPONENT_STARTUP_WAIT);
-//        } catch (SocketTimeoutException e) {
-//            err.addError(new AssertionError("Expected a TCP server socket on port " + bobPort, e));
-//        }
-//
-//        Thread aliceThread = new Thread(bot1);
-//        aliceThread.start();
-//
-//        // TODO here wait for Reputation token
-//
-//        try (JunitSocketClient client = new JunitSocketClient(alicePort, err)) {
-//            client.verify("[4] repuationtoken");
-//        }
-//
-//        try (JunitSocketClient client = new JunitSocketClient(bobPort, err)) {
-//            client.verify("[4] repuationtoken");
-//        }
-//
-//
-//        try {
-//            aliceThread.join();
-//            bobThread.join();
-//        } catch (InterruptedException e) {
-//            err.addError(new AssertionError("Bots were not terminated correctly"));
-//        }
-//        err.checkThat("Expected tcp socket on port " + alicePort + " to be closed after shutdown",
-//                Sockets.isServerSocketOpen(alicePort), is(false));
-//
-//        err.checkThat("Expected tcp socket on port " + bobPort + " to be closed after shutdown",
-//                Sockets.isServerSocketOpen(bobPort), is(false));
+        this.bobThread.start();
+        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
+
+        // Alice is our Test-method, we begin to send Bob our random hash
+        KeyPair aliceKeyPair = ECUtils.generateKeyPair();
+        Certificate certAlice = this.sp.registerClient(aliceKeyPair.getPublic());
+        String randomHashAlice = HashUtils.generateRandomHash();
+
+        WrappedSocket alice = new WrappedSocket("localhost", bobPort, true);
+        alice.writeOut("[1] " + randomHashAlice);
+
+        String randomHashBob            = alice.readIn().split(" ")[1];
+        byte[] signedHashBob            = RSAUtils.signString(aliceKeyPair, randomHashBob);
+        Reputationtoken tokenForBob     = new Reputationtoken(certAlice, signedHashBob);
+        String encodedTokenForBob       = MessageUtils.toString(tokenForBob);
+
+        WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort, true);
+        spSocket.writeOut("blind " + encodedTokenForBob);
+        String encodedBlindedReputationToken = spSocket.readIn();
+        spSocket.writeOut("bye");
+        spSocket.close();
+
+        // send reputation-token to bob
+        alice.writeOut("[2] " + encodedBlindedReputationToken + " " + encodedTokenForBob);
+
+        // we wait for bobs answer - reputation token
+        String messageFromBob = alice.readIn();
+        String blindedTokenFromBob = messageFromBob.split(" ")[1];
+        String originalTokenStringFromBob = messageFromBob.split(" ")[2];
+        Reputationtoken originalTokenFromBob = MessageUtils.decodeRT(originalTokenStringFromBob);
+
+        // We are only interested if bob's token is valid
+        // checking bobs answer if our token is valid is checked in method:
+        //  runBob_testProtocol_testWonNode()
+        WrappedSocket sp = new WrappedSocket("localhost", reputationServicePort, true);
+        sp.writeOut("verify " + blindedTokenFromBob + " " + originalTokenStringFromBob);
+        assertThat(sp.readIn(), is("valid"));
+
+        // TODO add Rating
+
+        // TODO verify Rating
+
+        sp.writeOut("bye");
+        sp.close();
     }
 
 
