@@ -41,8 +41,10 @@ public class Signer implements ACL {
     }
 
     private void generateKeys() {
+    }
 
-
+    public PublicKey getPublicKey() {
+        return this.publicKey;
     }
 
     public void setup() {

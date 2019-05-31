@@ -1,12 +1,14 @@
 package msz.Reputation;
 
 import msz.ConnectionHandler;
+import msz.Signer.Signer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.PublicKey;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -27,6 +29,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class ReputationServer extends Thread {
     private static final Log LOG = LogFactory.getLog(ReputationServer.class);
+    private PublicKey systemPublicKey = null;
 
     private ExecutorService executor = Executors.newFixedThreadPool(10);
 
@@ -45,10 +48,11 @@ public class ReputationServer extends Thread {
         this.out = System.out;
     }
 
-    public ReputationServer(InputStream in, PrintStream out) {
+    public ReputationServer(InputStream in, PrintStream out, PublicKey systemPublicKey) {
         // For testing the server itself, use the Streams from the Testbase class
         this.in = in;
         this.out = out;
+        this.systemPublicKey = systemPublicKey;
     }
 
     @Override
@@ -77,7 +81,7 @@ public class ReputationServer extends Thread {
             while(!serverSocket.isClosed()) {
                 LOG.info("X Waiting for connection on port " + port);
                 Socket socket = serverSocket.accept();
-                ReputationService service = new ReputationService(reputationStore, socket);
+                ReputationService service = new ReputationService(reputationStore, socket, systemPublicKey);
                 LOG.info("We spawn a new service thread");
                 executor.execute(service);
             }

@@ -44,10 +44,12 @@ public class ReputationBotBob implements IRepuationBot {
     private BufferedReader incMsgWonNode;
     private PrintWriter outMsgWonNode;
 
-    private String randomHashFromAlice = null;
     private String randomHashBobOriginal = null;
-    private byte[] blindedReputationTokenFromAlice;
+
+    private String randomHashFromAlice = null;
+    private String blindedReputationTokenFromAlice;
     private Reputationtoken reputationTokenFromAlice;
+    private String encodedReputationTokenFromAlice;
 
     private Reputationtoken originalTokenForAlice;
     private String blindedTokenForAlice;
@@ -117,7 +119,9 @@ public class ReputationBotBob implements IRepuationBot {
                     exchangeRandomHash(parts[1]);
                     break;
                 case "[2]":
-                    this.blindedReputationTokenFromAlice = MessageUtils.decodeToBytes(parts[1]);
+                    // no need to decode the blinded RT to bytes
+                    this.blindedReputationTokenFromAlice = parts[1];
+                    this.encodedReputationTokenFromAlice = parts[2];
                     this.reputationTokenFromAlice = MessageUtils.decodeRT(parts[2]);
                     LOG.info("Bob got the reputation token");
                     this.getBlindSignature();
@@ -131,24 +135,15 @@ public class ReputationBotBob implements IRepuationBot {
     public void exchangeRandomHash(String randomHashFromAlice) {
         this.randomHashFromAlice = randomHashFromAlice;
 
-        String randomHashBob = null;
+        this.randomHashBobOriginal = null;
         try {
-            randomHashBob = HashUtils.generateRandomHash();
+            randomHashBobOriginal = HashUtils.generateRandomHash();
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
 
-        this.randomHashBobOriginal = randomHashBob;
-        this.outMsgAlice.println("[1] " + randomHashBob);
+        this.outMsgAlice.println("[1] " + randomHashBobOriginal);
         this.outMsgAlice.flush();
-    }
-
-    /**
-     * Overload function which does not take a number as
-     * an Input. We use the RNG class for randomize stuff
-     */
-    public void exchangeRandomHash() {
-
     }
 
     @Override
@@ -198,29 +193,35 @@ public class ReputationBotBob implements IRepuationBot {
 
     @Override
     public void rateTheTransaction() {
-        // TODO we don't need an answer from alice anymore
-
-        // TODO connect to SP and send rep token, original hash, reputation and message
         boolean validToken = false;
         try {
             validToken = this.verifyAliceToken();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            LOG.error("Some exceptions appeared: " + e);
+            validToken = false; // just to be sure
         }
+
         // Atlast we write alice that everything is fine
         if(validToken) {
             this.outMsgAlice.println("everything is ok");
         } else {
             this.outMsgAlice.println("invalid Token");
-
         }
     }
 
-    private boolean verifyAliceToken() throws IOException {
-        // TODO need reputation server
+    private boolean verifyAliceToken() throws IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        PublicKey alicePublicKey = this.reputationTokenFromAlice.getPubkeyFromCert();
+        boolean validSignatureOfRandomHash = RSAUtils.verifySignature(
+                this.reputationTokenFromAlice.getSignatureOfHash(),
+                this.randomHashBobOriginal,
+                alicePublicKey);
+
+        if(!validSignatureOfRandomHash) {
+            throw new SignatureException("Signature is invalid of the random element");
+        }
 
         WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort, true);
-        spSocket.writeOut("verify " + blindedReputationTokenFromAlice + " " + reputationTokenFromAlice);
+        spSocket.writeOut("verify " + this.blindedReputationTokenFromAlice + " " + this.encodedReputationTokenFromAlice);
         boolean verifyAnswer = spSocket.readIn().equals("valid");
         spSocket.writeOut("bye");
         spSocket.close();

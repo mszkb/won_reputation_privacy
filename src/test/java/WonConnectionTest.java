@@ -2,6 +2,10 @@ import SocketTest.Constants;
 import SocketTest.Sockets;
 import SocketTest.TestBase;
 import msz.Reputation.ReputationServer;
+import msz.Signer.Signer;
+import msz.TrustedParty.Params;
+import msz.TrustedParty.TrustedParty;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.net.SocketTimeoutException;
@@ -11,10 +15,18 @@ import static org.hamcrest.CoreMatchers.is;
 public class WonConnectionTest extends TestBase {
 
     private final int reputationServicePort = 5555;
+    private Params params;
+    private Signer sp;
+
+    @Before
+    public void setUp() {
+        this.params = new TrustedParty().generateParams();
+        this.sp = new Signer(this.params);
+    }
 
     @Test
     public void connectionTest() throws Exception {
-        ReputationServer reputationServer = new ReputationServer(in, out);
+        ReputationServer reputationServer = new ReputationServer(in, out, sp.getPublicKey());
         Thread bot1Thread = new Thread(reputationServer);
         bot1Thread.start();
 

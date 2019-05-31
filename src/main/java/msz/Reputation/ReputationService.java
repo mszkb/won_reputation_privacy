@@ -3,6 +3,7 @@ package msz.Reputation;
 import msz.Message.Reputationtoken;
 import msz.Signer.BlindSignature;
 import msz.Utils.MessageUtils;
+import msz.Utils.RSAUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -12,12 +13,14 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ReputationService implements IReputationServer {
+    private PublicKey systemPublicKey = null;
     private boolean standalone = false;
     private ReputationStore reputationStore = null;
     private static final Log LOG = LogFactory.getLog(ReputationService.class);
@@ -33,10 +36,11 @@ public class ReputationService implements IReputationServer {
     private BufferedReader in;
     private PrintWriter out;
 
-    public ReputationService(ReputationStore reputationStore, Socket socket) {
+    public ReputationService(ReputationStore reputationStore, Socket socket, PublicKey systemPublicKey) {
         this(5555);
         this.blindingHelper = reputationStore.getBlindingHelper();
         this.socket = socket;
+        this.systemPublicKey = systemPublicKey;
         try {
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.out = new PrintWriter(socket.getOutputStream(), true);
@@ -71,7 +75,6 @@ public class ReputationService implements IReputationServer {
         this.out.println("hi");
     }
 
-    // TODO need client handler
     @Override
     public void run() {
         try {
@@ -166,6 +169,21 @@ public class ReputationService implements IReputationServer {
             this.out.println("invalid");
             LOG.info("Reputationtoken is not valid");
         }
+    }
+    public void verify(byte[] blindRepuationToken, Reputationtoken reputationtoken, String originalHash) throws Exception {
+        if(this.blindingHelper.verify(blindRepuationToken, reputationtoken)) {
+            if(RSAUtils.verifySignature(reputationtoken.getSignatureOfHash(), originalHash, reputationtoken.getPubkeyFromCert())) {
+                if(RSAUtils.verifyCertificate(reputationtoken.getSignatureFromCert(), reputationtoken.getBytes(), this.systemPublicKey)) {
+                    this.out.println("valid");
+                    LOG.info("Reputationtoken is valid");
+                }
+            }
+        } else {
+            this.out.println("invalid");
+            LOG.info("Reputationtoken is not valid");
+        }
+
+
     }
 
     @Override
