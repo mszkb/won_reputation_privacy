@@ -57,6 +57,9 @@ public class WonBotTest extends TestBase {
 
     private ReputationService reputationService;
     private int reputationServicePort = 5555;
+    private ReputationServer reputationServer;
+    private Thread reputationServerThread;
+
     private TestInputStream repIn = new TestInputStream();
     private TestOutputStream repOut = new TestOutputStream();
 
@@ -77,8 +80,12 @@ public class WonBotTest extends TestBase {
         this.sp = new Signer(this.params);
         this.blindSigner = new BlindSignature();
 
-        this.reputationService = new ReputationService(blindSigner);
-        this.reputationServiceThread = new Thread(reputationService);
+//        this.reputationService = new ReputationService(blindSigner);
+//        this.reputationServiceThread = new Thread(reputationService);
+
+        this.reputationServer = new ReputationServer(this.in, this.out);
+        this.reputationServerThread = new Thread(reputationServer);
+        this.reputationServerThread.start();
 
         this.bobKeyPair = ECUtils.generateKeyPair();
         this.certBob = this.sp.registerClient(bobKeyPair.getPublic());
@@ -87,12 +94,12 @@ public class WonBotTest extends TestBase {
 
         this.aliceKeyPair = ECUtils.generateKeyPair();
         this.certAlice = this.sp.registerClient(aliceKeyPair.getPublic());
+
+        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
     }
 
     @Test
     public void runSP_testBlindAndSign_valid() throws IOException, NoSuchAlgorithmException, InterruptedException {
-        this.reputationServiceThread.start();
-
         // our test class proceeds too fast so we need to wait
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
@@ -106,8 +113,6 @@ public class WonBotTest extends TestBase {
     }
     @Test
     public void runSP_testBlindAndSign_invalid() throws IOException, NoSuchAlgorithmException, InterruptedException {
-        this.reputationServiceThread.start();
-
         // our test class proceeds too fast so we need to wait
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
@@ -121,11 +126,6 @@ public class WonBotTest extends TestBase {
     }
     @Test
     public void runSP_testBlindAndSign_valid_reputationToken() throws InterruptedException, NoSuchAlgorithmException, IOException, NoSuchProviderException, InvalidAlgorithmParameterException, SignatureException, InvalidKeyException {
-        this.reputationServiceThread.start();
-
-        // our test class proceeds too fast so we need to wait
-        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
-
         // These are the steps to create a blind signature out of the Reputation-Token
         KeyPair aliceKeyPair        = ECUtils.generateKeyPair();
         Certificate certAlice       = this.sp.registerClient(aliceKeyPair.getPublic());
@@ -143,8 +143,32 @@ public class WonBotTest extends TestBase {
         assertThat(alice.readIn(), is("valid"));
     }
     @Test
+    public void runSP_testBlindAndSign_invalid_reputationToken() throws InterruptedException, NoSuchAlgorithmException, IOException, NoSuchProviderException, InvalidAlgorithmParameterException, SignatureException, InvalidKeyException {
+        // These are the steps to create a blind signature out of the Reputation-Token
+        KeyPair aliceKeyPair        = ECUtils.generateKeyPair();
+        Certificate certAlice       = this.sp.registerClient(aliceKeyPair.getPublic());
+        String randomHashAlice      = HashUtils.generateRandomHash();
+        String randomHashBob        = HashUtils.generateRandomHash();
+        byte[] signedHashBob        = RSAUtils.signString(aliceKeyPair, randomHashBob);
+        Reputationtoken tokenForBob = new Reputationtoken(certAlice, signedHashBob);
+        String encodedToken         = MessageUtils.toString(tokenForBob);
+
+        // We want to blind the encodedToken by the reputation service
+        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort, true);
+        alice.writeOut("blind " + encodedToken);
+        String blindedRT = alice.readIn();
+
+        // Create a fake reputation token
+        String fakedrandomHashBob  = HashUtils.generateRandomHash(); // just create a new randomHash
+        byte[] fakedsignedHashBob  = RSAUtils.signString(aliceKeyPair, fakedrandomHashBob);
+        Reputationtoken fakedToken = new Reputationtoken(certAlice, fakedsignedHashBob);
+        String fakedEncodedToken   = MessageUtils.toString(fakedToken);
+
+        alice.writeOut("verify " + blindedRT + " " + fakedEncodedToken);
+        assertThat(alice.readIn(), is("invalid"));
+    }
+    @Test
     public void runBob_testProtocol() throws Exception {
-        this.reputationServiceThread.start();
         this.bobThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
@@ -172,16 +196,9 @@ public class WonBotTest extends TestBase {
         String originalTokenStringFromBob = messageFromBob.split(" ")[2];
         Reputationtoken originalTokenFromBob = MessageUtils.decodeRT(originalTokenStringFromBob);
 
-        this.reputationServiceThread.join();
-        this.reputationService = new ReputationService(blindSigner);
-        this.reputationServiceThread = new Thread(reputationService);
-        this.reputationServiceThread.start();
-        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
-
         // We are only interested if bob's token is valid
         // checking bobs answer if our token is valid is checked in method:
         //  runBob_testProtocol_testWonNode()
-
         WrappedSocket sp = new WrappedSocket("localhost", reputationServicePort, true);
         sp.writeOut("verify " + blindedTokenFromBob + " " + originalTokenStringFromBob);
         assertThat(sp.readIn(), is("valid"));

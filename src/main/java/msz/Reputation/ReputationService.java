@@ -35,11 +35,12 @@ public class ReputationService implements IReputationServer {
 
     public ReputationService(ReputationStore reputationStore, Socket socket) {
         this(5555);
-        this.reputationStore = reputationStore;
+        this.blindingHelper = reputationStore.getBlindingHelper();
         this.socket = socket;
         try {
-            this.out = new PrintWriter(socket.getOutputStream(), true);
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            this.out = new PrintWriter(socket.getOutputStream(), true);
+            this.out.println("hi");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -104,14 +105,28 @@ public class ReputationService implements IReputationServer {
                     break;
                 case "verifyraw":
                     this.verify(MessageUtils.decodeToBytes(parts[1]), parts[2].getBytes());
+                    break;
                 case "rating":
                     this.addRating(parts[1], parts[2], parts[3], parts[4], parts[5]);
                     break;
                 case "bye":
-                    socket.close();
-                    bobSocket.close();
+                    this.tearDown();
                     break;
             }
+        }
+    }
+
+    private void tearDown() {
+        try {
+            if(bobSocket != null) {
+                bobSocket.close();
+            }
+
+            if(socket != null) {
+                socket.close();
+            }
+        } catch (IOException e) {
+            LOG.debug("Socket ist closed! This might be normal, here is the stackstrace anyways: " + e);
         }
     }
 
@@ -136,18 +151,20 @@ public class ReputationService implements IReputationServer {
     public void verify(byte[] blindRepuationToken, byte[] originalHash) throws Exception {
         if(this.blindingHelper.verify(blindRepuationToken, originalHash)) {
             this.out.println("valid");
+            LOG.info("Reputationtoken is valid");
         } else {
             this.out.println("invalid");
-            throw new Exception("Reputationtoken is not valid");
+            LOG.info("Reputationtoken is not valid");
         }
     }
 
     public void verify(byte[] blindRepuationToken, Reputationtoken reputationtoken) throws Exception {
         if(this.blindingHelper.verify(blindRepuationToken, reputationtoken)) {
             this.out.println("valid");
+            LOG.info("Reputationtoken is valid");
         } else {
             this.out.println("invalid");
-            throw new Exception("Reputationtoken is not valid");
+            LOG.info("Reputationtoken is not valid");
         }
     }
 

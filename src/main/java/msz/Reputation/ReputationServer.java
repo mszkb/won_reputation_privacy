@@ -40,56 +40,28 @@ public class ReputationServer extends Thread {
 
     private ReputationStore reputationStore = new ReputationStore();
 
-    /**
-     * This constructor takes the system shell for
-     * reading and writing
-     *
-     * Start with standard port 5050
-     */
     public ReputationServer() {
         this.in = System.in;
         this.out = System.out;
     }
 
-    /**
-     * This constructor takes a give input and printstream
-     * Ideal for testing purpose
-     *
-     * @param in
-     * @param out
-     */
     public ReputationServer(InputStream in, PrintStream out) {
+        // For testing the server itself, use the Streams from the Testbase class
         this.in = in;
         this.out = out;
     }
 
-    /**
-     * This starts a socket on port 5060 and listens
-     * for shutdown.
-     */
     @Override
     public void run() {
         try {
-            // Create server socket for incomming connections to port 5060
             this.serverSocket = new ServerSocket(this.port);
-
-            // listens for 'shutdown'
+            new Thread(new RepuationServerConnection()).start();
             this.directTerminal();
         } catch (InterruptedException | IOException e) {
             e.printStackTrace();
         }
-
-        // Start Socket on port 5060
-        // Listen for incomming connection to delegate
-        // the handling to RepuationBotService
-        new Thread(new RepuationServerConnection()).start();
     }
 
-    /**
-     * Inner class to make Threading possible to avoid creating spereated files
-     * Starts the TransferClientHandler Thread after Client connects to
-     * given ipadress and port
-     */
     private class RepuationServerConnection implements ConnectionHandler {
         public void run() {
             try {
@@ -99,36 +71,27 @@ public class ReputationServer extends Thread {
             }
         }
 
-        /**
-         * We wait for incoming connections and delegate the handling
-         * to the Thread RepuationBotService
-         *
-         * @throws IOException
-         */
+        // We wait for incoming connections and delegate the handling
+        // to the Thread RepuationBotService
         public void clientAcceptLoop() throws IOException {
             while(!serverSocket.isClosed()) {
                 LOG.info("X Waiting for connection on port " + port);
                 Socket socket = serverSocket.accept();
                 ReputationService service = new ReputationService(reputationStore, socket);
+                LOG.info("We spawn a new service thread");
                 executor.execute(service);
             }
         }
     }
 
-
-    /**
-     * Listen for "shutdown" keyword in the terminal and closes all sockets
-     *
-     * @throws InterruptedException
-     * @throws IOException
-     */
+    // Listen for "shutdown" keyword in the terminal and closes all sockets
     private void directTerminal() throws InterruptedException, IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(this.in));
         PrintWriter out = new PrintWriter(this.out);
         String inputLine;
         boolean shutdown = false;
 
-        Thread.sleep(500); // Simulate some loading lol
+        Thread.sleep(500); // Simulate some loading
 
         out.println("Shutdown the server with the command: 'shutdown'");
         out.print("T !> ");
@@ -142,12 +105,10 @@ public class ReputationServer extends Thread {
         this.shutdown();
     }
 
-    /**
-     * After recieving 'shutdown' we close all threads
-     * including the server socket
-     */
+    //After recieving 'shutdown' we close all threads
+    //including the server socket
     private void shutdown() {
-        this.out.println("Shutting down Reputationbot: " );    // TODO which transferserver?
+        this.out.println("Shutting down Reputationbot: " );
         try {
             executor.shutdown();
             try {
@@ -163,11 +124,7 @@ public class ReputationServer extends Thread {
         }
     }
 
-    /**
-     * For single test purpose and for easy start
-     *
-     * @param args
-     */
+    //For single test purpose and for easy start
     public static void main(String[] args) {
         new ReputationServer().start();
     }
