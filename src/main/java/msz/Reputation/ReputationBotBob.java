@@ -46,7 +46,7 @@ public class ReputationBotBob implements IRepuationBot {
 
     private String randomHashFromAlice = null;
     private String randomHashBobOriginal = null;
-    private byte[] blindedReputationToken;
+    private byte[] blindedReputationTokenFromAlice;
     private Reputationtoken reputationTokenFromAlice;
 
     private Reputationtoken originalTokenForAlice;
@@ -117,7 +117,7 @@ public class ReputationBotBob implements IRepuationBot {
                     exchangeRandomHash(parts[1]);
                     break;
                 case "[2]":
-                    this.blindedReputationToken = MessageUtils.decodeToBytes(parts[1]);
+                    this.blindedReputationTokenFromAlice = MessageUtils.decodeToBytes(parts[1]);
                     this.reputationTokenFromAlice = MessageUtils.decodeRT(parts[2]);
                     LOG.info("Bob got the reputation token");
                     this.getBlindSignature();
@@ -201,8 +201,29 @@ public class ReputationBotBob implements IRepuationBot {
         // TODO we don't need an answer from alice anymore
 
         // TODO connect to SP and send rep token, original hash, reputation and message
-
+        boolean validToken = false;
+        try {
+            validToken = this.verifyAliceToken();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         // Atlast we write alice that everything is fine
-        this.outMsgAlice.println("everything is ok");
+        if(validToken) {
+            this.outMsgAlice.println("everything is ok");
+        } else {
+            this.outMsgAlice.println("invalid Token");
+
+        }
+    }
+
+    private boolean verifyAliceToken() throws IOException {
+        // TODO need reputation server
+
+        WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort, true);
+        spSocket.writeOut("verify " + blindedReputationTokenFromAlice + " " + reputationTokenFromAlice);
+        boolean verifyAnswer = spSocket.readIn().equals("valid");
+        spSocket.writeOut("bye");
+        spSocket.close();
+        return verifyAnswer;
     }
 }
