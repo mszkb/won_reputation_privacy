@@ -16,7 +16,7 @@ public interface IRepuationBot extends Runnable {
      * Creates an reputation token and sends it to other bot
      * This method blocks until we get the token from the other bot
      */
-    void createAndExchangeRepuationToken();
+    void exchangeRepuationToken();
 
     /**
      * With the reputationtoken we can send it to the SP with the rating and a comment

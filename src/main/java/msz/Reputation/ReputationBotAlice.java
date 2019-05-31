@@ -78,7 +78,7 @@ public class ReputationBotAlice implements IRepuationBot {
                                                 // wait for the answer (another socket)
                                                 // then create a reputation token
                                                 // and send it to Bob
-                    this.createAndExchangeRepuationToken();
+                    this.exchangeRepuationToken();
                                                 // loop is over and we wait for bob
                     break;
                 case "[2]":
@@ -122,7 +122,7 @@ public class ReputationBotAlice implements IRepuationBot {
     }
 
     @Override
-    public void createAndExchangeRepuationToken() {
+    public void exchangeRepuationToken() {
         // TODO bob is still waiting
 
         // TODO we send bob the blind signed reputation token

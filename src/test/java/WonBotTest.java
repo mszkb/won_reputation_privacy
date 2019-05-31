@@ -97,9 +97,8 @@ public class WonBotTest extends TestBase {
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
         String randomHashAlice = HashUtils.generateRandomHash();
-        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort);
 
-        alice.readIn(); // we wait until server is ready - server sends "hi"
+        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort, true);
         alice.writeOut("blindraw " + randomHashAlice);
         String blindedHash = alice.readIn();
         alice.writeOut("verifyraw " + blindedHash + " " + randomHashAlice);
@@ -113,9 +112,8 @@ public class WonBotTest extends TestBase {
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
         String randomHashAlice = HashUtils.generateRandomHash();
-        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort);
 
-        alice.readIn(); // we wait until server is ready - server sends "hi"
+        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort, true);
         alice.writeOut("blindraw " + randomHashAlice);
         String blindedHash = alice.readIn();
         alice.writeOut("verifyraw " + blindedHash + " aaa" + randomHashAlice);
@@ -137,14 +135,13 @@ public class WonBotTest extends TestBase {
         Reputationtoken tokenForBob = new Reputationtoken(certAlice, signedHashBob);
         String encodedToken         = MessageUtils.toString(tokenForBob);
 
-        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort);
-        alice.readIn(); // we wait until server is ready - server sends "hi"
+        // We want to blind the encodedToken by the reputation service
+        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort, true);
         alice.writeOut("blind " + encodedToken);
         String blindedRT = alice.readIn();
         alice.writeOut("verify " + blindedRT + " " + encodedToken);
         assertThat(alice.readIn(), is("valid"));
     }
-
     @Test
     public void runBob_testProtocol() throws Exception {
         this.reputationServiceThread.start();
@@ -156,8 +153,7 @@ public class WonBotTest extends TestBase {
         Certificate certAlice = this.sp.registerClient(aliceKeyPair.getPublic());
         String randomHashAlice = HashUtils.generateRandomHash();
 
-        WrappedSocket alice = new WrappedSocket("localhost", bobPort);
-        alice.readIn();
+        WrappedSocket alice = new WrappedSocket("localhost", bobPort, true);
         alice.writeOut("[1] " + randomHashAlice);
 
         String randomHashBob            = alice.readIn().split(" ")[1];
@@ -175,20 +171,60 @@ public class WonBotTest extends TestBase {
         String blindedTokenFromBob = messageFromBob.split(" ")[1];
         String originalTokenStringFromBob = messageFromBob.split(" ")[2];
         Reputationtoken originalTokenFromBob = MessageUtils.decodeRT(originalTokenStringFromBob);
-        LOG.info("We got the reptoken from bob");
 
-        this.reputationService = new ReputationService(blindSigner);
         this.reputationServiceThread.join();
+        this.reputationService = new ReputationService(blindSigner);
         this.reputationServiceThread = new Thread(reputationService);
         this.reputationServiceThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
-        WrappedSocket sp = new WrappedSocket("localhost", reputationServicePort);
-        LOG.info("Wait until Reputation service is ready");
-        sp.readIn();
+
+        // We are only interested if bob's token is valid
+        // checking bobs answer if our token is valid is checked in method:
+        //  runBob_testProtocol_testWonNode()
+
+        WrappedSocket sp = new WrappedSocket("localhost", reputationServicePort, true);
         sp.writeOut("verify " + blindedTokenFromBob + " " + originalTokenStringFromBob);
         assertThat(sp.readIn(), is("valid"));
         sp.writeOut("rating ");
         sp.close();
+    }
+    @Test
+    public void runBob_testProtocol_testWonNode() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, InterruptedException, SignatureException, InvalidKeyException, IOException {
+        // Similar to runBob_testProtocol but this method
+        // tests especially the output from bob and checks alice token
+        this.reputationServiceThread.start();
+        this.bobThread.start();
+        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
+
+        // Alice is our Test-method, we begin to send Bob our random hash
+        KeyPair aliceKeyPair = ECUtils.generateKeyPair();
+        Certificate certAlice = this.sp.registerClient(aliceKeyPair.getPublic());
+        String randomHashAlice = HashUtils.generateRandomHash();
+
+        WrappedSocket alice = new WrappedSocket("localhost", bobPort, true);
+        alice.writeOut("[1] " + randomHashAlice);
+
+        String randomHashBob            = alice.readIn().split(" ")[1];
+        byte[] signedHashBob            = RSAUtils.signString(aliceKeyPair, randomHashBob);
+        Reputationtoken tokenForBob     = new Reputationtoken(certAlice, signedHashBob);
+        String encodedToken             = MessageUtils.toString(tokenForBob);
+        byte[] blindedReputationToken   = this.blindSigner.blindAndSign(tokenForBob.getBytes());
+        String blindedRTforBob          = MessageUtils.encodeBytes(blindedReputationToken);
+
+        // send reputation-token to bob
+        alice.writeOut("[2] " + blindedRTforBob + " " + encodedToken);
+
+        // we wait for bobs answer - reputation token
+        String messageFromBob = alice.readIn();
+
+        this.reputationServiceThread.join();
+        this.reputationService = new ReputationService(blindSigner);
+        this.reputationServiceThread = new Thread(reputationService);
+        this.reputationServiceThread.start();
+        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
+
+        // We check the reputation token bob got from alice
+        assertThat(alice.readIn(), is("everything is ok"));
     }
 
     @Test

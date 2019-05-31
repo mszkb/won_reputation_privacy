@@ -2,7 +2,6 @@ package msz.Reputation;
 
 import msz.Message.Certificate;
 import msz.Message.Reputationtoken;
-import msz.Signer.BlindSignature;
 import msz.Utils.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -11,7 +10,6 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.*;
-import java.util.Base64;
 
 /**
  * This is the recieving Bot, in WoN we describe it as the Supplier
@@ -50,6 +48,9 @@ public class ReputationBotBob implements IRepuationBot {
     private String randomHashBobOriginal = null;
     private byte[] blindedReputationToken;
     private Reputationtoken reputationTokenFromAlice;
+
+    private Reputationtoken originalTokenForAlice;
+    private String blindedTokenForAlice;
 
     public ReputationBotBob(Socket socket, Certificate certificateBob) {
         try {
@@ -120,7 +121,7 @@ public class ReputationBotBob implements IRepuationBot {
                     this.reputationTokenFromAlice = MessageUtils.decodeRT(parts[2]);
                     LOG.info("Bob got the reputation token");
                     this.getBlindSignature();
-                    this.createAndExchangeRepuationToken();
+                    this.exchangeRepuationToken();
                     this.rateTheTransaction();
             }
         }
@@ -152,50 +153,47 @@ public class ReputationBotBob implements IRepuationBot {
 
     @Override
     public void getBlindSignature() {
-        // TODO alice is already done and she is waiting for our token
+        // alice is already done and she is waiting for our token
+
         byte[] signedHashAlice = null;
         try {
             signedHashAlice = RSAUtils.signString(this.bobKeyPair.getPrivate(), randomHashFromAlice);
         } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
             e.printStackTrace();
         }
-
-        // TODO we create the reputation token containing our cert and signed random hash from alice
-        Reputationtoken tokenForAlice = new Reputationtoken(certificateBob, signedHashAlice);
-        String encodedTokenForAlice = null;
-        // TODO send signed hash and certificate of bob to SP
-//        byte[] blindedReputationToken = this.blindSigner.blindAndSign(tokenForBob.getBytes());
-        String blinded = null;
+        this.originalTokenForAlice = new Reputationtoken(certificateBob, signedHashAlice);
         try {
-            blinded = blindTokenForAlice(tokenForAlice);
+            this.blindedTokenForAlice = blindTokenForAlice(originalTokenForAlice);
             Thread.sleep(2000);
-            encodedTokenForAlice = MessageUtils.toString(tokenForAlice);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        String messageBack = "[2] " + blinded + " " + encodedTokenForAlice;
-        this.outMsgAlice.println(messageBack);
     }
 
     private String blindTokenForAlice(Reputationtoken tokenForAlice) throws IOException {
-        WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort);
-        spSocket.readIn(); // we wait for 'hi' to make sure we are able to write
+        // We connect to the Reputationservice for blinding our token for alice
+
+        WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort, true);
         spSocket.writeOut("blind " + MessageUtils.toString(tokenForAlice));
         String blinded = spSocket.readIn();
         spSocket.writeOut("bye");
         spSocket.close();
+
         return blinded;
     }
 
     @Override
-    public void createAndExchangeRepuationToken() {
-        // TODO alice is still waiting
+    public void exchangeRepuationToken() {
+        // We send the blinded Reputation Token and the original base64 encoded reputation token to alice
 
-        // TODO we send alice the blind signed reputation token
-
-        // TODO alice knows that bob is finished and she rates bob
-        this.outMsgAlice.println("bla\n");
+        String encodedTokenForAlice = null;
+        try {
+            encodedTokenForAlice = MessageUtils.toString(this.originalTokenForAlice);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        String messageBack = "[2] " + this.blindedTokenForAlice + " " + encodedTokenForAlice;
+        this.outMsgAlice.println(messageBack);
     }
 
     @Override
@@ -203,5 +201,8 @@ public class ReputationBotBob implements IRepuationBot {
         // TODO we don't need an answer from alice anymore
 
         // TODO connect to SP and send rep token, original hash, reputation and message
+
+        // Atlast we write alice that everything is fine
+        this.outMsgAlice.println("everything is ok");
     }
 }

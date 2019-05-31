@@ -28,6 +28,22 @@ public class WrappedSocket {
         }
     }
 
+    // setting wait to true waits until the server wrote something
+    // when server has written something we know that she is ready
+    public WrappedSocket(String host, int port, boolean wait){
+        try {
+            socket = new Socket(host, port);
+            out = new PrintWriter(socket.getOutputStream(), true);
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+            if(wait) {
+                in.readLine();
+            }
+        } catch (IOException e) {
+            //e.printStackTrace();
+        }
+    }
+
     public Socket getSocket() {
         return socket;
     }
