@@ -127,7 +127,7 @@ public class ReputationBotServer extends Thread {
                 if(side.equals("alice")) {
                     LOG.info("We start bot Alice");
                     System.out.println("We start bot Alice");
-                    bot = new ReputationBotAlice(otherBotIP, otherBotPort);
+//                    bot = new ReputationBotAlice(otherBotIP, otherBotPort);
                 } else if (side.equals("bob")) {
                     LOG.info("We start bot Bob");
                     System.out.println("We start bot Bob");
