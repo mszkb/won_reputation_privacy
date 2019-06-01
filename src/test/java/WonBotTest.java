@@ -90,32 +90,6 @@ public class WonBotTest extends TestBase {
         this.certAlice = this.sp.registerClient(aliceKeyPair.getPublic());
     }
     @Test
-    public void runSP_testBlindAndSign_valid() throws IOException, NoSuchAlgorithmException, InterruptedException {
-        // our test class proceeds too fast so we need to wait
-        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
-
-        String randomHashAlice = HashUtils.generateRandomHash();
-
-        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort, true);
-        alice.writeOut("blindraw " + randomHashAlice);
-        String blindedHash = alice.readIn();
-        alice.writeOut("verifyraw " + blindedHash + " " + randomHashAlice);
-        assertThat(alice.readIn(), is("valid"));
-    }
-    @Test
-    public void runSP_testBlindAndSign_invalid() throws IOException, NoSuchAlgorithmException, InterruptedException {
-        // our test class proceeds too fast so we need to wait
-        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
-
-        String randomHashAlice = HashUtils.generateRandomHash();
-
-        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort, true);
-        alice.writeOut("blindraw " + randomHashAlice);
-        String blindedHash = alice.readIn();
-        alice.writeOut("verifyraw " + blindedHash + " aaa" + randomHashAlice);
-        assertThat(alice.readIn(), is("invalid"));
-    }
-    @Test
     public void runSP_testBlindAndSign_valid_reputationToken() throws InterruptedException, NoSuchAlgorithmException, IOException, NoSuchProviderException, InvalidAlgorithmParameterException, SignatureException, InvalidKeyException {
         // These are the steps to create a blind signature out of the Reputation-Token
         KeyPair aliceKeyPair        = ECUtils.generateKeyPair();
