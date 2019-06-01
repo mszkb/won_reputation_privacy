@@ -110,7 +110,7 @@ public class ReputationService implements IReputationServer {
                     this.verify(MessageUtils.decodeToBytes(parts[1]), parts[2].getBytes());
                     break;
                 case "rating":
-                    this.addRating(parts[1], parts[2], parts[3], parts[4], parts[5]);
+                    this.addRating(parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]);
                     break;
                 case "bye":
                     this.tearDown();
@@ -134,7 +134,7 @@ public class ReputationService implements IReputationServer {
     }
 
     @Override
-    public void addRating(String forUser, String rating, String message, String blindRepuationToken, String originalHash) throws Exception {
+    public void addRating(String forUser, String rating, String message, String blindRepuationToken, String originalHash, String originalReputationToken) throws Exception {
         if(this.blindingHelper.verify(originalHash.getBytes(), blindRepuationToken.getBytes())) {
             throw new Exception("Reputationtoken is not valid");
         }
@@ -143,10 +143,10 @@ public class ReputationService implements IReputationServer {
 
         if (this.reputation.containsKey(userId)) {
             List<Reputation> list = this.reputation.get(userId);
-            list.add(new Reputation(Float.parseFloat(rating), message, blindRepuationToken.getBytes()));
+            list.add(new Reputation(Float.parseFloat(rating), message, blindRepuationToken.getBytes(), MessageUtils.decodeRT(originalReputationToken)));
         } else {
             List<Reputation> newList = new ArrayList<>();
-            newList.add(new Reputation(Float.parseFloat(rating), message, blindRepuationToken.getBytes()));
+            newList.add(new Reputation(Float.parseFloat(rating), message, blindRepuationToken.getBytes(), MessageUtils.decodeRT(originalReputationToken)));
             this.reputation.put(userId, newList);
         }
     }
