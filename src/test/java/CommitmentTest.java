@@ -38,7 +38,7 @@ public class CommitmentTest {
 //        byte[] v5 = "Blub".getBytes("UTF-8");
 //        byte[][] vs = new byte[][]{v1, v2, v3, v4, v5};
 
-        System.out.println(ECUtils.hashMessage("Martin Szalay"));
+//        System.out.println(ECUtils.hashMessage("Martin Szalay"));
 //        this.params.getGenerator().
 
 //        byte result = rH.getEncoded(false);

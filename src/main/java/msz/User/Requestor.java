@@ -13,8 +13,16 @@ import msz.WonProtocol;
 import org.bouncycastle.math.ec.ECPoint;
 
 import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.security.interfaces.ECPrivateKey;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 
 /**
  * Requestor is considered as Alice
@@ -49,9 +57,7 @@ public class Requestor implements ACL, WonProtocol {
     /**
      * @source https://files.zotero.net/12620611427/From%20Zero%20Knowledge%20Proofs%20to%20Bulletproofs%20Paper%20.pdf
      */
-    private void createCommitment() {
-        ECPoint rnd = ECUtils.createRandomPoint(params.getGroup());
-
+    public ECPoint createCommitment(float reputation) {
         // use h0...hn for the combined Pedersen commitment
         // use z,h0...hn for the blinded Pedersen commitment
 
@@ -61,11 +67,28 @@ public class Requestor implements ACL, WonProtocol {
 
         // multiply each attribute with the associated ECPoint in params (hs)
         // at the end add randomness * hs0
-        ECPoint commitment = rnd.multiply(this.params.getH().getAffineXCoord().toBigInteger())
-                .multiply((this.params.getH().getAffineYCoord().toBigInteger()));
-        for(ECPoint point : this.params.getHs()) {
-//            commitment.add(point.multiply());
-        }
+
+        ECPoint rnd = ECUtils.createRandomPoint(params.getGroup());
+
+        // Expiration date is today midnight
+        LocalTime midnight = LocalTime.MIDNIGHT;
+        LocalDate today = LocalDate.now(ZoneId.of("Europe/Berlin"));
+        LocalDateTime todayMidnight = LocalDateTime.of(today, midnight);
+        LocalDateTime tomorrowMidnight = todayMidnight.plusDays(1);
+        BigInteger exp = new BigInteger(String.valueOf(Timestamp.valueOf(tomorrowMidnight).getTime()));
+
+        // multiply by 100 to make sure you have 2 two-digits behind the comma
+        int irep = Math.round(reputation*100);
+        BigInteger rep = new BigInteger(String.valueOf(irep));
+
+        // This private key is associated with our certificates public key
+        ECPrivateKey sk = (ECPrivateKey) this.keyPair.getPrivate();
+
+        ECPoint commitment = rnd.multiply(sk.getS());
+        commitment.multiply(exp);
+        commitment.multiply(rep);
+
+        return commitment;
     }
 
     private void createMessageToSign() {

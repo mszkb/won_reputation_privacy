@@ -10,7 +10,14 @@ import java.math.BigInteger;
 public class TrustedParty {
 
     private String G_name = "secp192r1";
-    private final int maxAttributes = 5;
+    private int maxAttributes = 5;
+
+    public TrustedParty() {
+    }
+
+    public TrustedParty(int maxAttributes) {
+        this.maxAttributes = maxAttributes;
+    }
 
     public Params generateParams() {
         // TODO hash the points
