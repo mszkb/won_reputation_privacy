@@ -86,7 +86,7 @@ public class ReputationBotAlice implements IRepuationBot {
     private void connectToBob() throws IOException {
         this.bobSocket = new Socket("localhost", this.bobPort);
         this.incMsgBob = new BufferedReader(new InputStreamReader((this.bobSocket).getInputStream()));
-        this.outMsgBob = new PrintWriter(((Socket) this.bobSocket).getOutputStream());
+        this.outMsgBob = new PrintWriter((this.bobSocket).getOutputStream());
 
         this.incMsgBob.readLine(); // We wait until bob is ready
     }
@@ -127,7 +127,7 @@ public class ReputationBotAlice implements IRepuationBot {
                     // bob answered with his  reputationtoken
                     // now we are obligated to rate the transaction
                     // open another socket to the SP with token, original hash, message and rating
-                    this.blindedTokenForBob = parts[1];
+                    this.blindedReputationTokenFromBob = parts[1];
                     this.encodedReputationTokenFromBob = parts[2];
                     this.originalReputationTokenFromBob = MessageUtils.decodeRT(parts[2]);
                     this.rateTheTransaction();

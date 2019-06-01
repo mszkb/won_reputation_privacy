@@ -258,13 +258,13 @@ public class WonBotTest extends TestBase {
 
         // Alice sends Bob the randomHash and waits until Bob sends
         // his randomHash to Alice
-        String randomHashAlice = bot2out.listen();
+        String randomHashFromAlice = bot2out.listen().split(" ")[1];
 
         String randomHashBob = HashUtils.generateRandomHash();
         bot2in.addLine("[1] " + randomHashBob);
 
         // We sign the randomhash, create a RT and let the SP blind it
-        byte[] signedHashAlice          = RSAUtils.signString(bobKeyPair, randomHashAlice);
+        byte[] signedHashAlice          = RSAUtils.signString(bobKeyPair, randomHashFromAlice);
         Reputationtoken tokenForAlice   = new Reputationtoken(certBob,  signedHashAlice);
         String encodedTokenForAlice     = MessageUtils.toString(tokenForAlice);
         WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort, true);
@@ -287,5 +287,16 @@ public class WonBotTest extends TestBase {
         bot2in.addLine("[2] " + encodedBlindedReputationToken + " " + encodedTokenForAlice);
         String aliceAnswer = bot2out.listen();
         assertThat(aliceAnswer, is("everything is ok"));
+    }
+
+    @Test
+    public void runAlice_runBob_testProtocol() throws InterruptedException {
+        this.bobThread.start();
+        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
+
+        this.aliceThread.start();
+        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
+
+
     }
 }

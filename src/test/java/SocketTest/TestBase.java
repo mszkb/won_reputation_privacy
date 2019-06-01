@@ -16,7 +16,7 @@ public class TestBase {
     public ErrorCollector err = new ErrorCollector();
 
     @Rule
-    public Timeout timeout = new Timeout(20, TimeUnit.SECONDS); // fail tests that do not terminate after 30 seconds
+    public Timeout timeout = new Timeout(30, TimeUnit.SECONDS); // fail tests that do not terminate after 30 seconds
 
     protected TestInputStream in;
     protected TestOutputStream out;
