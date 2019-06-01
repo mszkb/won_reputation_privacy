@@ -281,6 +281,11 @@ public class WonBotTest extends TestBase {
     }
     @Test
     public void runAlice_runBob_testProtocol() throws InterruptedException, NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+        // We want to let Alice and Bob work together
+        // We play the role of the clients and our only
+        // task is to sign the randomHash we get from
+        // our bots
+
         ReputationBotBob bobX = new ReputationBotBob(bot1in, bot1out, certBob, false);
         Thread bobXThread = new Thread(bobX);
         bobXThread.start();
@@ -303,8 +308,7 @@ public class WonBotTest extends TestBase {
         LOG.info("Client of Bob: hash is signed, we send it back");
         bot1in.addLine("[2] " + MessageUtils.encodeBytes(signedHashAlice));
 
-        // TODO prob: publickey im certificate ist anderer als der signed stuff
-
-        bot2out.listen();
+        assertThat(bot1out.listen(), is("everything is ok"));
+        assertThat(bot2out.listen(), is("everything is ok"));
     }
 }

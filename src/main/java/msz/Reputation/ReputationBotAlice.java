@@ -145,12 +145,22 @@ public class ReputationBotAlice implements IRepuationBot {
                     this.encodedReputationTokenFromBob = parts[2];
                     this.originalReputationTokenFromBob = MessageUtils.decodeRT(parts[2]);
                     this.rateTheTransaction();
-
                     break;
+                case "bye":
+                    this.tearDown();
             }
 
             LOG.info("We wait for a message");
         }
+    }
+
+    private void tearDown() {
+//        try {
+//            this.aliceSocket.close();
+//            this.bobSocket.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
 
     @Override
@@ -241,9 +251,12 @@ public class ReputationBotAlice implements IRepuationBot {
         // Atlast we write bob that everything is fine
         if(validToken) {
             this.outMsgBob.println("everything is ok");
+            this.outMsgWonNode.println("everything is ok");
         } else {
             this.outMsgBob.println("invalid Token");
         }
+
+        this.outMsgBob.println("bye");
     }
 
     private boolean verifyBobToken() throws IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
