@@ -10,10 +10,11 @@ import org.bouncycastle.math.ec.ECPoint;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.security.interfaces.ECPrivateKey;
 import java.util.ArrayList;
 
 public class Signer implements ACL {
-    private final Params params;
+    private Params params;
     private ECPoint x;
     private ECPoint y;
 
@@ -22,9 +23,10 @@ public class Signer implements ACL {
 
     private ArrayList<PublicKey> clientList = new ArrayList<>();
 
+    private ECPoint commitment;
+
     public Signer(Params params) {
         this.params = params;
-
         // Signer Keys
         KeyPair signerKP = null;
         try { signerKP = ECUtils.generateKeyPair();
@@ -55,8 +57,14 @@ public class Signer implements ACL {
         this.y = keys[1];
     }
 
-    public void registration() {
+    public void registration(ECPoint commitment) {
+        this.commitment = commitment;
+        this.params = params;
+        ECPrivateKey sk = (ECPrivateKey) this.privateKey;
 
+        ECPoint rnd = ECUtils.createRandomPoint(this.params.getGroup());
+        ECPoint z1 = rnd.add(this.commitment);
+        ECPoint z2 = z1.subtract(this.params.getZ());
     }
 
     public void preparation() {

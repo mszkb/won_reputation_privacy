@@ -5,11 +5,11 @@ import msz.Signer.Signer;
 import msz.User.Requestor;
 import msz.TrustedParty.Params;
 import msz.TrustedParty.TrustedParty;
+import org.bouncycastle.math.ec.ECPoint;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.math.BigInteger;
-import java.security.spec.ECPoint;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -44,7 +44,12 @@ public class ACLTest extends TestBase {
     public void registerTest() {
         Requestor r = new Requestor(this.params);
 
+
         System.out.println(r.createCommitment(4.3f));
+
+        ECPoint commitment = r.createCommitment(4.3f);
+        this.signer.registration(commitment);
+        this.signer.preparation();
     }
 
     @Test

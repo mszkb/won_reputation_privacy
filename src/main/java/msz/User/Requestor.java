@@ -13,7 +13,6 @@ import msz.WonProtocol;
 import org.bouncycastle.math.ec.ECPoint;
 
 import java.io.UnsupportedEncodingException;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -70,11 +69,12 @@ public class Requestor implements ACL, WonProtocol {
 
         ECPoint rnd = ECUtils.createRandomPoint(params.getGroup());
 
-        // Expiration date is today midnight
+        // Expiration date is in 30 days at midnight
+        // So our atom is valid for 30 days
         LocalTime midnight = LocalTime.MIDNIGHT;
         LocalDate today = LocalDate.now(ZoneId.of("Europe/Berlin"));
         LocalDateTime todayMidnight = LocalDateTime.of(today, midnight);
-        LocalDateTime tomorrowMidnight = todayMidnight.plusDays(1);
+        LocalDateTime tomorrowMidnight = todayMidnight.plusDays(30);
         BigInteger exp = new BigInteger(String.valueOf(Timestamp.valueOf(tomorrowMidnight).getTime()));
 
         // multiply by 100 to make sure you have 2 two-digits behind the comma
@@ -99,7 +99,7 @@ public class Requestor implements ACL, WonProtocol {
         createMessageToSign();
     }
 
-    public void registration() {
+    public void registration(ECPoint commitment) {
 
     }
 

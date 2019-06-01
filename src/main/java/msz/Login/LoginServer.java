@@ -1,6 +1,7 @@
 package msz.Login;
 
 import msz.ACL;
+import org.bouncycastle.math.ec.ECPoint;
 
 public class LoginServer implements ACL {
 
@@ -14,7 +15,7 @@ public class LoginServer implements ACL {
     }
 
     @Override
-    public void registration() {
+    public void registration(ECPoint commitment) {
 
     }
 

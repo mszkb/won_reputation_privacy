@@ -8,6 +8,7 @@ import msz.TrustedParty.Params;
 import msz.Utils.ECUtils;
 import msz.Utils.HashUtils;
 import msz.WonProtocol;
+import org.bouncycastle.math.ec.ECPoint;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
@@ -45,7 +46,7 @@ public class Supplier implements ACL, WonProtocol {
 
     }
 
-    public void registration() {
+    public void registration(ECPoint commitment) {
 
     }
 
