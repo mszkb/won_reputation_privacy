@@ -1,34 +1,26 @@
-import SocketTest.*;
-import com.sun.security.ntlm.Server;
+import SocketTest.Constants;
+import SocketTest.TestBase;
+import SocketTest.TestInputStream;
+import SocketTest.TestOutputStream;
 import msz.Message.Certificate;
 import msz.Message.Reputationtoken;
-import msz.Reputation.*;
-import msz.Signer.BlindSignature;
+import msz.Reputation.ReputationBotAlice;
+import msz.Reputation.ReputationBotBob;
+import msz.Reputation.ReputationServer;
 import msz.Signer.Signer;
 import msz.TrustedParty.Params;
 import msz.TrustedParty.TrustedParty;
-import msz.User.Requestor;
-import msz.User.Supplier;
 import msz.Utils.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.bouncycastle.util.encoders.Hex;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
-import java.nio.charset.StandardCharsets;
 import java.security.*;
-import java.util.Arrays;
-import java.util.Base64;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.core.IsNull.notNullValue;
-import static org.junit.Assert.assertTrue;
 
 /**
  *
@@ -80,6 +72,7 @@ public class WonBotTest extends TestBase {
         this.reputationServer = new ReputationServer(this.in, this.out, this.sp.getPublicKey());
         this.reputationServerThread = new Thread(reputationServer);
         this.reputationServerThread.start();
+        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
         this.bobKeyPair = ECUtils.generateKeyPair();
         this.certBob = this.sp.registerClient(bobKeyPair.getPublic());
@@ -95,8 +88,6 @@ public class WonBotTest extends TestBase {
 
         this.aliceKeyPair = ECUtils.generateKeyPair();
         this.certAlice = this.sp.registerClient(aliceKeyPair.getPublic());
-
-        Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
     }
     @Test
     public void runSP_testBlindAndSign_valid() throws IOException, NoSuchAlgorithmException, InterruptedException {
@@ -288,15 +279,32 @@ public class WonBotTest extends TestBase {
         String aliceAnswer = bot2out.listen();
         assertThat(aliceAnswer, is("everything is ok"));
     }
-
     @Test
-    public void runAlice_runBob_testProtocol() throws InterruptedException {
-        this.bobThread.start();
+    public void runAlice_runBob_testProtocol() throws InterruptedException, NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+        ReputationBotBob bobX = new ReputationBotBob(bot1in, bot1out, certBob, false);
+        Thread bobXThread = new Thread(bobX);
+        bobXThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
-        this.aliceThread.start();
+        ReputationBotAlice aliceX = new ReputationBotAlice(bot2in, bot2out, certAlice, false);
+        Thread aliceXThread = new Thread(aliceX);
+        aliceXThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
+        LOG.info("Client of Alice: we sign the hash from the BOT");
+        String randomHashBob = bot2out.listen().split(" ")[1];
+        byte[] signedHashBob = RSAUtils.signString(aliceKeyPair, randomHashBob);
+        LOG.info("Client of Alice: hash is signed, we send it back");
+        bot2in.addLine("[1] " + MessageUtils.encodeBytes(signedHashBob));
 
+        LOG.info("Client of Bob: we sign the hash from the BOT");
+        String randomHashAlice = bot1out.listen().split(" ")[1];
+        byte[] signedHashAlice = RSAUtils.signString(bobKeyPair, randomHashAlice);
+        LOG.info("Client of Bob: hash is signed, we send it back");
+        bot1in.addLine("[2] " + MessageUtils.encodeBytes(signedHashAlice));
+
+        // TODO prob: publickey im certificate ist anderer als der signed stuff
+
+        bot2out.listen();
     }
 }

@@ -83,10 +83,24 @@ public class ReputationBotAlice implements IRepuationBot {
         this.standalone = true;
     }
 
+    public ReputationBotAlice(InputStream incMsgWonNode, OutputStream outMsgWonNode, Certificate certificateAlice, boolean standalone) {
+        try {
+            this.aliceKeyPair = ECUtils.generateKeyPair();
+        } catch (InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        this.incMsgWonNode = new BufferedReader(new InputStreamReader(incMsgWonNode));
+        this.outMsgWonNode = new PrintWriter(outMsgWonNode, true);
+
+        this.certificateAlice = certificateAlice;
+        this.standalone = false;
+    }
+
     private void connectToBob() throws IOException {
+        LOG.info("We connect to Bob");
         this.bobSocket = new Socket("localhost", this.bobPort);
         this.incMsgBob = new BufferedReader(new InputStreamReader((this.bobSocket).getInputStream()));
-        this.outMsgBob = new PrintWriter((this.bobSocket).getOutputStream());
+        this.outMsgBob = new PrintWriter((this.bobSocket).getOutputStream(), true);
 
         this.incMsgBob.readLine(); // We wait until bob is ready
     }
@@ -134,35 +148,57 @@ public class ReputationBotAlice implements IRepuationBot {
 
                     break;
             }
+
+            LOG.info("We wait for a message");
         }
     }
 
     @Override
     public void getBlindSignature() {
-        byte[] signedHashBob = null;
-        try {
-            signedHashBob = RSAUtils.signString(this.aliceKeyPair.getPrivate(), this.randomHashFromBob);
-        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
-            e.printStackTrace();
-        }
+        byte[] signedHashBob = this.signHash();
+
         this.originalTokenForBob = new Reputationtoken(certificateAlice, signedHashBob);
         try {
+            LOG.info("we blind the token for bob");
             this.blindedTokenForBob = blindTokenForBob(originalTokenForBob);
-            Thread.sleep(500);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private String blindTokenForBob(Reputationtoken tokenForBob) throws IOException {
+    private byte[] signHash() {
+        byte[] signedHashBob = null;
+
+        if(!standalone) {
+            LOG.info("Contact client: We need to sign the random hash");
+            this.outMsgWonNode.println("[1] " + this.randomHashFromBob);
+            try {
+                return MessageUtils.decodeToBytes(this.incMsgWonNode.readLine().split(" ")[1]);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        try {
+            signedHashBob = RSAUtils.signString(this.aliceKeyPair.getPrivate(), this.randomHashFromBob);
+        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
+            e.printStackTrace();
+        }
+        return signedHashBob;
+    }
+
+    private String blindTokenForBob(Reputationtoken tokenForBob) throws IOException, InterruptedException {
         // We connect to the Reputationservice for blinding our token for bob
 
+        LOG.info("we connect to reputation service and blind the token");
         WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort, true);
         spSocket.writeOut("blind " + MessageUtils.toString(tokenForBob));
         String blinded = spSocket.readIn();
         spSocket.writeOut("bye");
         spSocket.close();
+        Thread.sleep(500);
 
+        LOG.info("token is blinded");
         return blinded;
     }
 
@@ -178,12 +214,14 @@ public class ReputationBotAlice implements IRepuationBot {
             LOG.error("Could not create random hash: " + e.getMessage());
         }
 
+        LOG.info("sending randomhash to bob");
         this.outMsgBob.println("[1] " + this.randomHashAliceOriginal);
     }
 
     @Override
     public void exchangeRepuationToken() {
         try {
+            LOG.info("We send the blinded token and the encoded original token to bob");
             this.outMsgBob.println("[2] " + this.blindedTokenForBob + " " + MessageUtils.toString(this.originalTokenForBob));
         } catch (IOException e) {
             e.printStackTrace();

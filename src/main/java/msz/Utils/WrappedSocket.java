@@ -37,10 +37,10 @@ public class WrappedSocket {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             if(wait) {
-                in.readLine();
+                this.readIn();
             }
-        } catch (IOException e) {
-            //e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

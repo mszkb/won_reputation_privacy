@@ -33,6 +33,7 @@ public class ReputationBotBob implements IRepuationBot {
     private final int reputationServicePort = 5555;
 
     private final int bobPort = 5055;
+    private boolean standalone = true;
     private KeyPair bobKeyPair = null;
     private Certificate certificateBob;
 
@@ -58,7 +59,7 @@ public class ReputationBotBob implements IRepuationBot {
         try {
             this.bobKeyPair = ECUtils.generateKeyPair();
             this.incMsgWonNode = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            this.outMsgWonNode = new PrintWriter(socket.getOutputStream());
+            this.outMsgWonNode = new PrintWriter(socket.getOutputStream(), true);
         } catch (IOException | InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
@@ -73,8 +74,20 @@ public class ReputationBotBob implements IRepuationBot {
             e.printStackTrace();
         }
         this.incMsgWonNode = new BufferedReader(new InputStreamReader(incMsgWonNode));
-        this.outMsgWonNode = new PrintWriter(outMsgWonNode);
+        this.outMsgWonNode = new PrintWriter(outMsgWonNode, true);
         this.certificateBob = certificateBob;
+    }
+
+    public ReputationBotBob(InputStream incMsgWonNode, OutputStream outMsgWonNode, Certificate certificateBob, boolean standalone) {
+        try {
+            this.bobKeyPair = ECUtils.generateKeyPair();
+        } catch (InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        this.incMsgWonNode = new BufferedReader(new InputStreamReader(incMsgWonNode));
+        this.outMsgWonNode = new PrintWriter(outMsgWonNode, true);
+        this.certificateBob = certificateBob;
+        this.standalone = false;
     }
 
     /**
@@ -116,6 +129,7 @@ public class ReputationBotBob implements IRepuationBot {
                 case "[1]":
                     LOG.info("we get random hash from alice");
                     // Alice has sent the random hash
+                    this.randomHashFromAlice = parts[1];
                     exchangeRandomHash(parts[1]);
                     break;
                 case "[2]":
@@ -128,6 +142,8 @@ public class ReputationBotBob implements IRepuationBot {
                     this.exchangeRepuationToken();
                     this.rateTheTransaction();
             }
+
+            LOG.info("We wait for a message");
         }
     }
 
@@ -143,36 +159,52 @@ public class ReputationBotBob implements IRepuationBot {
         }
 
         this.outMsgAlice.println("[1] " + randomHashBobOriginal);
-        this.outMsgAlice.flush();
     }
 
     @Override
     public void getBlindSignature() {
         // alice is already done and she is waiting for our token
 
-        byte[] signedHashAlice = null;
-        try {
-            signedHashAlice = RSAUtils.signString(this.bobKeyPair.getPrivate(), randomHashFromAlice);
-        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
-            e.printStackTrace();
-        }
+        byte[] signedHashAlice = this.signHash();
+
         this.originalTokenForAlice = new Reputationtoken(certificateBob, signedHashAlice);
         try {
             this.blindedTokenForAlice = blindTokenForAlice(originalTokenForAlice);
-            Thread.sleep(500);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private String blindTokenForAlice(Reputationtoken tokenForAlice) throws IOException {
+    private byte[] signHash() {
+        byte[] signedHashBob = null;
+
+        if(!standalone) {
+            this.outMsgWonNode.println("[2] " + this.randomHashFromAlice);
+            try {
+                return MessageUtils.decodeToBytes(this.incMsgWonNode.readLine().split(" ")[1]);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        try {
+            signedHashBob = RSAUtils.signString(this.bobKeyPair.getPrivate(), this.randomHashFromAlice);
+        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
+            e.printStackTrace();
+        }
+        return signedHashBob;
+    }
+
+    private String blindTokenForAlice(Reputationtoken tokenForAlice) throws IOException, InterruptedException {
         // We connect to the Reputationservice for blinding our token for alice
+        LOG.info("we connect to reputation service and blind the token");
 
         WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort, true);
         spSocket.writeOut("blind " + MessageUtils.toString(tokenForAlice));
         String blinded = spSocket.readIn();
         spSocket.writeOut("bye");
         spSocket.close();
+        Thread.sleep(500);
 
         return blinded;
     }
