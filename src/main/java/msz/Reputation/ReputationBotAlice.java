@@ -60,19 +60,15 @@ public class ReputationBotAlice implements IRepuationBot {
             this.aliceKeyPair = ECUtils.generateKeyPair();
             this.incMsgWonNode = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.outMsgWonNode = new PrintWriter(socket.getOutputStream());
-        } catch (IOException | InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
         this.certificateAlice = certificateAlice;
     }
 
-    public ReputationBotAlice(InputStream incMsgWonNode, OutputStream outMsgWonNode, Certificate certificateAlice) {
-        try {
-            this.aliceKeyPair = ECUtils.generateKeyPair();
-        } catch (InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
+    public ReputationBotAlice(InputStream incMsgWonNode, OutputStream outMsgWonNode, Certificate certificateAlice) throws NoSuchProviderException {
+        this.aliceKeyPair = ECUtils.generateKeyPair();
         this.incMsgWonNode = new BufferedReader(new InputStreamReader(incMsgWonNode));
         this.outMsgWonNode = new PrintWriter(outMsgWonNode, true);
 
@@ -83,12 +79,8 @@ public class ReputationBotAlice implements IRepuationBot {
         this.standalone = true;
     }
 
-    public ReputationBotAlice(InputStream incMsgWonNode, OutputStream outMsgWonNode, Certificate certificateAlice, boolean standalone) {
-        try {
-            this.aliceKeyPair = ECUtils.generateKeyPair();
-        } catch (InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
+    public ReputationBotAlice(InputStream incMsgWonNode, OutputStream outMsgWonNode, Certificate certificateAlice, boolean standalone) throws NoSuchProviderException {
+        this.aliceKeyPair = ECUtils.generateKeyPair();
         this.incMsgWonNode = new BufferedReader(new InputStreamReader(incMsgWonNode));
         this.outMsgWonNode = new PrintWriter(outMsgWonNode, true);
 

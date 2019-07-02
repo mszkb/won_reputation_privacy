@@ -1,25 +1,18 @@
 import SocketTest.TestBase;
-import msz.Message.Message;
-import msz.Message.Reputationtoken;
 import msz.Signer.Signer;
-import msz.User.Requestor;
 import msz.TrustedParty.Params;
 import msz.TrustedParty.TrustedParty;
+import msz.User.Requestor;
 import org.bouncycastle.math.ec.ECPoint;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.math.BigInteger;
-import java.sql.Timestamp;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static junit.framework.TestCase.assertEquals;
-import static org.hamcrest.MatcherAssert.assertThat;
 
 public class ACLTest extends TestBase {
 
@@ -29,7 +22,7 @@ public class ACLTest extends TestBase {
     private List<String> attributes;
 
     @Before
-    public void setup() {
+    public void setup() throws NoSuchAlgorithmException {
         attributes = new ArrayList<>();
         attributes.add("msz");
         attributes.add("mszkb@skca.eu");
@@ -41,7 +34,7 @@ public class ACLTest extends TestBase {
     }
 
     @Test
-    public void registerTest() {
+    public void registerTest() throws NoSuchProviderException {
         Requestor r = new Requestor(this.params);
 
 

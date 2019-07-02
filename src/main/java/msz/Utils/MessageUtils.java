@@ -1,8 +1,10 @@
 package msz.Utils;
 
+import msz.Message.Certificate;
 import msz.Message.Reputationtoken;
 
 import java.io.*;
+import java.security.PublicKey;
 import java.util.Base64;
 
 public class MessageUtils {
@@ -42,6 +44,26 @@ public class MessageUtils {
     public static Reputationtoken decodeRT(String base64encodedRT) {
         try {
             return (Reputationtoken) MessageUtils.fromString(base64encodedRT);
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public static Certificate decodeCert(String base64encdodedCert) {
+        try {
+            return (Certificate) MessageUtils.fromString(base64encdodedCert);
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public static PublicKey decodePubKey(String encodedPubKey) {
+        try {
+            return (PublicKey) MessageUtils.fromString(encodedPubKey);
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }

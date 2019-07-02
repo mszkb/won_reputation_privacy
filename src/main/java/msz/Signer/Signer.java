@@ -25,14 +25,11 @@ public class Signer implements ACL {
 
     private ECPoint commitment;
 
-    public Signer(Params params) {
+    public Signer(Params params) throws NoSuchAlgorithmException {
         this.params = params;
         // Signer Keys
         KeyPair signerKP = null;
-        try { signerKP = ECUtils.generateKeyPair();
-        } catch (InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
+        signerKP = ECUtils.generateKeyPair();
 
         if(signerKP == null) {
             throw new NullPointerException("KeyPair generation Failed");

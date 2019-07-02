@@ -7,6 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
 
 public class CommitmentTest {
 
@@ -14,7 +15,7 @@ public class CommitmentTest {
     private Signer signer;
 
     @Before
-    public void setup() {
+    public void setup() throws NoSuchAlgorithmException {
         this.params = new TrustedParty().generateParams();
         this.signer = new Signer(this.params);
     }

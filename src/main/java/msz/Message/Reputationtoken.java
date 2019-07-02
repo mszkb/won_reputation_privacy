@@ -2,10 +2,8 @@ package msz.Message;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
-import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
-import java.util.Base64;
 
 public class Reputationtoken implements Message {
     private final static long serialVersionUID = 1;
@@ -44,5 +42,9 @@ public class Reputationtoken implements Message {
 
     public byte[] getSignatureFromCert() {
         return this.certificate.getSignature();
+    }
+
+    public Certificate getCertificate() {
+        return this.certificate;
     }
 }

@@ -60,7 +60,7 @@ public class ReputationBotBob implements IRepuationBot {
             this.bobKeyPair = ECUtils.generateKeyPair();
             this.incMsgWonNode = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.outMsgWonNode = new PrintWriter(socket.getOutputStream(), true);
-        } catch (IOException | InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
@@ -68,22 +68,14 @@ public class ReputationBotBob implements IRepuationBot {
     }
 
     public ReputationBotBob(InputStream incMsgWonNode, OutputStream outMsgWonNode, Certificate certificateBob) {
-        try {
-            this.bobKeyPair = ECUtils.generateKeyPair();
-        } catch (InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
+        this.bobKeyPair = ECUtils.generateKeyPair();
         this.incMsgWonNode = new BufferedReader(new InputStreamReader(incMsgWonNode));
         this.outMsgWonNode = new PrintWriter(outMsgWonNode, true);
         this.certificateBob = certificateBob;
     }
 
     public ReputationBotBob(InputStream incMsgWonNode, OutputStream outMsgWonNode, Certificate certificateBob, boolean standalone) {
-        try {
-            this.bobKeyPair = ECUtils.generateKeyPair();
-        } catch (InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
+        this.bobKeyPair = ECUtils.generateKeyPair();
         this.incMsgWonNode = new BufferedReader(new InputStreamReader(incMsgWonNode));
         this.outMsgWonNode = new PrintWriter(outMsgWonNode, true);
         this.certificateBob = certificateBob;

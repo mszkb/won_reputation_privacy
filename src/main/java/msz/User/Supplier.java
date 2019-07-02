@@ -25,20 +25,12 @@ public class Supplier implements ACL, WonProtocol {
     private KeyPair keyPair;
     private Certificate foreignCertificate;
 
-    public Supplier() {
-        try {
-            this.keyPair = ECUtils.generateKeyPair();
-        } catch (InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
+    public Supplier() throws NoSuchProviderException {
+        this.keyPair = ECUtils.generateKeyPair();
     }
 
     public Supplier(Params params) {
-        try {
-            this.keyPair = ECUtils.generateKeyPair();
-        } catch (InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
+        this.keyPair = ECUtils.generateKeyPair();
         this.params = params;
     }
 

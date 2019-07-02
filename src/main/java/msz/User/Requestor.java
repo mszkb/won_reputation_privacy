@@ -34,22 +34,14 @@ public class Requestor implements ACL, WonProtocol {
     private Certificate foreignCertificate;
 
 
-    public Requestor(Params params) {
-        try {
-            this.keyPair = ECUtils.generateKeyPair();
-        } catch (InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
+    public Requestor(Params params) throws NoSuchProviderException {
+        this.keyPair = ECUtils.generateKeyPair();
 
         this.params = params;
     }
 
-    public Requestor(Params params, ECPoint y, Message m, String[] Attributes) {
-        try {
-            this.keyPair = ECUtils.generateKeyPair();
-        } catch (InvalidAlgorithmParameterException | NoSuchProviderException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
+    public Requestor(Params params, ECPoint y, Message m, String[] Attributes) throws NoSuchProviderException {
+        this.keyPair = ECUtils.generateKeyPair();
         this.params = params;
     }
 

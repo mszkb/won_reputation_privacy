@@ -254,7 +254,7 @@ public class WonBotTest extends TestBase {
         assertThat(aliceAnswer, is("everything is ok"));
     }
     @Test
-    public void runAlice_runBob_testProtocol() throws InterruptedException, NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+    public void runAlice_runBob_testProtocol() throws InterruptedException, NoSuchAlgorithmException, SignatureException, InvalidKeyException, NoSuchProviderException {
         // We want to let Alice and Bob work together
         // We play the role of the clients and our only
         // task is to sign the randomHash we get from

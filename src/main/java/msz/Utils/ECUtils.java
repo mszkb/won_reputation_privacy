@@ -54,12 +54,20 @@ public class ECUtils {
      * @throws NoSuchProviderException
      * @throws NoSuchAlgorithmException
      */
-    public static KeyPair generateKeyPair() throws InvalidAlgorithmParameterException, NoSuchProviderException, NoSuchAlgorithmException {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", "SunEC");
-        ECGenParameterSpec ecsp = new ECGenParameterSpec("secp192r1");
-        kpg.initialize(ecsp);
+    public static KeyPair generateKeyPair() {
+        KeyPairGenerator kpg = null;
+        KeyPair kp = null;
 
-        KeyPair kp = kpg.generateKeyPair();
+        try {
+            kpg = KeyPairGenerator.getInstance("EC", "SunEC");
+            ECGenParameterSpec ecsp = new ECGenParameterSpec("secp192r1");
+            kpg.initialize(ecsp);
+
+            kp = kpg.generateKeyPair();
+        } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | NoSuchProviderException e) {
+            e.printStackTrace();
+        }
+
         return kp;
     }
 }

@@ -1,9 +1,7 @@
 package msz.Message;
 
-import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
-import java.util.Base64;
 
 public class Certificate implements Message {
     private final static long serialVersionUID = 1;
@@ -19,6 +17,18 @@ public class Certificate implements Message {
         this.publicKey = publicKey;
         this.ID = ID;
         this.signature = signature;
+    }
+
+    public int getID() {
+        return this.ID;
+    }
+
+    public PublicKey publicKey() {
+        return this.publicKey;
+    }
+
+    public byte[] signature() {
+        return this.signature;
     }
 
     public PublicKey getPublicKey() {

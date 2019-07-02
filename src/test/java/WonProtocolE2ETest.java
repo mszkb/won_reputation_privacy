@@ -41,7 +41,7 @@ public class WonProtocolE2ETest {
     }
 
     @Before
-    public void createClients() {
+    public void createClients() throws NoSuchProviderException, NoSuchAlgorithmException {
         this.params = new TrustedParty().generateParams();
         this.r = new Requestor(this.params);
         this.s = new Supplier(this.params);

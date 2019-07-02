@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.net.SocketTimeoutException;
+import java.security.NoSuchAlgorithmException;
 
 import static org.hamcrest.CoreMatchers.is;
 
@@ -19,7 +20,7 @@ public class WonConnectionTest extends TestBase {
     private Signer sp;
 
     @Before
-    public void setUp() {
+    public void setUp() throws NoSuchAlgorithmException {
         this.params = new TrustedParty().generateParams();
         this.sp = new Signer(this.params);
     }

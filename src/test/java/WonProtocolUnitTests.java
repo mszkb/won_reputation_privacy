@@ -1,5 +1,4 @@
 import msz.Message.Certificate;
-import msz.Message.Reputationtoken;
 import msz.Signer.BlindSignature;
 import msz.Signer.Signer;
 import msz.TrustedParty.Params;
@@ -41,7 +40,7 @@ public class WonProtocolUnitTests {
      *
      */
     @Before
-    public void createClients() {
+    public void createClients() throws NoSuchProviderException, NoSuchAlgorithmException {
         this.params = new TrustedParty().generateParams();
         this.r = new Requestor(this.params);
         this.s = new Supplier(this.params);

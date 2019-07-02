@@ -16,6 +16,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -33,7 +34,7 @@ public class BlindSignatureTest extends TestBase {
     private Thread reputationServerThread;
 
     @Before
-    public void createClients() throws InterruptedException {
+    public void createClients() throws InterruptedException, NoSuchProviderException, NoSuchAlgorithmException {
         this.params = new TrustedParty().generateParams();
         this.r = new Requestor(this.params);
         this.s = new Supplier(this.params);
