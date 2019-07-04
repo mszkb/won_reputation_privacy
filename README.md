@@ -12,6 +12,29 @@ Implementation of the idea of [PrivateRide](https://petsymposium.org/2017/papers
 
 TODO: use Maven to build and test the Repo without IntelliJ
 
+## How to Use
+
+msz.bakk.cmd.CmdApplication contains a main function. You can start the CLI tool here.
+Start the Application with the argument "SP" and the application acts like the service provider and initializes
+all the needed parameters.
+
+**IntelliJ**: Start the CmdApplication and stop it right after to create a configuration.
+Edit the Configuration and copy it 4 times and name the configuration like this "Alice", "Bob", "Charlie", "Carol".
+The names are used for the shell indicator. But you need atleast one "SP" to work with.
+
+Alice, Bob, Charlie, Carol protocol:
+genrandomhash
+exchangehash <HASH>
+verifyhashsignature
+blindreputationtokenmsg (just to get the WON-Message)
+createexchangetokenmsg <BLINDED TOKEN>
+rateuser <RATING in float> <MESSAGE String> <ENCODED reputation token> <ENCODED blinded token>
+
+SP protocol:
+blindsigntoken <ENCODED reputation token>
+verify <ENCODED blinded token> <ENCODED reputation token>
+rateuser <RATING in float> <MESSAGE String> <ENCODED reputation token> <ENCODED blinded token> <ORIGINAL hash from genrandomhash>
+
 ## Tests
 
 This work contains test-cases implemented with JUnit. These test classes provide an overview of how the implementation was implemented and how to use the individual classes.

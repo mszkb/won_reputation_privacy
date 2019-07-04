@@ -295,8 +295,8 @@ public class CLI {
     }
 
     @ShellMethod(value = "verifies given original hash with the signed one")
-    public boolean verifyhashsignature(String originalHash) throws IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-        return RSAUtils.verifySignature(this.signedHash, originalHash, this.myCertificate.getPublicKey());
+    public boolean verifyhashsignature() throws IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        return RSAUtils.verifySignature(this.signedHash, this.myRandomHash, this.myCertificate.getPublicKey());
     }
 
     @ShellMethod(value = "Send reputation token to the SP, SP returns the blinded token along with the original one")
