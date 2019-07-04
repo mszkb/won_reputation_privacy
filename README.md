@@ -1,18 +1,14 @@
 # Web of Needs - Privacy Preserving Reputation System
 
-<p align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/7/76/Elliptic_curve_simple.png"><br />
-  <span style="font-size: 10px"><a href="https://commons.wikimedia.org/wiki/File:Elliptic_curve_simple.png">Elliptic Curve Image by Sean Kelly</a></span>
-</p>
-<br />
-
-Implementation of the idea of [PrivateRide](https://petsymposium.org/2017/papers/issue2/paper09-2017-2-source.pdf) and [ACL](https://eprint.iacr.org/2012/298.pdf) in Java 8.
+Implementation of the idea of [PrivateRide](https://petsymposium.org/2017/papers/issue2/paper09-2017-2-source.pdf) in Java 8.
 
 [Web of Needs: Finding and cooperating with people. Protocol, not platform. Decentralized. Linked Data. Open Source.](https://github.com/researchstudio-sat/webofneeds)
 
 ## Setup
 
-Clone the Repo and import it into IntelliJ and import Maven Dependencies.
+- Clone the Repo and import it into IntelliJ and import Maven Dependencies.
+- Make sure you "mvn install" [WoN-Core of my fork](https://github.com/mszkb/webofneeds) 
+- Reimport Maven dependencies
 
 TODO: use Maven to build and test the Repo without IntelliJ
 
@@ -21,18 +17,17 @@ TODO: use Maven to build and test the Repo without IntelliJ
 This work contains test-cases implemented with JUnit. These test classes provide an overview of how the implementation was implemented and how to use the individual classes.
 We provide tests with and without sockets.
 
-Socket Implementation are the prototype for the Won Network. 
+Socket implementation are the prototype for the Won network. 
 The tests without sockets can be used as a library.
+
+The test class of the CLI tool is inside src/test/java/ structure.
+To test the CLI tool manually you can open up 3 terminal windows (alice, bob, SP).
 
 ## Documentation
 
 We simulate the Reputation-Token acquiring process with plain Java Sockets. This is a simple implementation of the Idea presented in PrivateRide and the prototype for the WoN.
 
 In WoN we use so-called bots which can perform tasks on behalf of the user. eg. acquiring ACL-Tokens or Reputation-Tokens. These tokens are based on complex computation which should be hidden from the user. The only thing the user is interested being able to create an Atom or rate another User.
-
-### Theory: ACL
-
-// TODO
 
 ### Theory: Reputation-Token
 
