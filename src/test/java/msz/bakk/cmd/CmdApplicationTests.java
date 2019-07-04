@@ -1,6 +1,6 @@
 package msz.bakk.cmd;
 
-import msz.Utils.ECUtils;
+import msz.bakk.protocol.Utils.ECUtils;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.riot.Lang;
 import org.junit.Before;
