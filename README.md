@@ -21,19 +21,22 @@ all the needed parameters.
 **IntelliJ**: Start the CmdApplication and stop it right after to create a configuration.
 Edit the Configuration and copy it 4 times and name the configuration like this "Alice", "Bob", "Charlie", "Carol".
 The names are used for the shell indicator. But you need atleast one "SP" to work with.
-
-Alice, Bob, Charlie, Carol protocol:
-genrandomhash
-exchangehash <HASH>
-verifyhashsignature
-blindreputationtokenmsg (just to get the WON-Message)
-createexchangetokenmsg <BLINDED TOKEN>
-rateuser <RATING in float> <MESSAGE String> <ENCODED reputation token> <ENCODED blinded token>
-
-SP protocol:
-blindsigntoken <ENCODED reputation token>
-verify <ENCODED blinded token> <ENCODED reputation token>
-rateuser <RATING in float> <MESSAGE String> <ENCODED reputation token> <ENCODED blinded token> <ORIGINAL hash from genrandomhash>
+  
+Alice, Bob, Charlie, Carol protocol:  
+genrandomhash  
+exchangehash \<HASH>  
+verifyhashsignature  \<HASH from genrandomhash>
+blindreputationtokenmsg (just to get the WON-Message)  
+createexchangetokenmsg <BLINDED TOKEN>  
+rateuser \<RATING in float> \<MESSAGE String> \<ENCODED reputation token> \<ENCODED blinded token>  
+  
+SP protocol:  
+blindsigntoken \<ENCODED reputation token>  
+verify \<ENCODED blinded token> \<ENCODED reputation token>  
+rateuser \<RATING in float> \<MESSAGE String> \<ENCODED reputation token> \<ENCODED blinded token> \<ORIGINAL hash from genrandomhash>  
+  
+The Tool is supposed to act like a real implementation - so you do not have to copy and paste every single
+parameter. All parameters that are used before are stored into fields in the CLI object.  
 
 ## Tests
 
