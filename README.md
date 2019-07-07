@@ -47,6 +47,8 @@ Your message has to begin with
 ]  
   
   
+Message types are defined in docs/reputation.ttl as rep\:subClassOf rep\:Message
+  
 **Alice, Bob, Charlie, Carol basic protocol commands:**  
 genrandomhash  
 exchangehash \<HASH>  
