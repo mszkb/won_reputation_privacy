@@ -1,0 +1,96 @@
+@prefix cc: <http://creativecommons.org/ns#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix doc: <http://www.w3.org/2000/10/swap/pim/doc#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rep: <https://w3id.org/won/ext/reputation#> .
+
+rep:Message a rdfs:Class ;
+    rdfs:label "Message" ;
+    rdfs:comment "A message represents a state in the rating process" .
+
+rep:ExchangeRandomHash rdfs:subClassOf rep:Message ;
+    rdfs:label "Message: Exchange Random Hash" ;
+    rdfs:comment "Two user exchange a random hash" .
+
+rep:BlindSignMessage rdfs:subClassOf rep:Message ;
+    rdfs:label "Message: Blind Sign Message" ;
+    rdfs:comment "This message is for the service provider which should blind sign the giben reputation token." .
+
+rep:FinishBlindMessage rdfs:subClassOf rep:Message ;
+    rdfs:label "Message: Finish blind Sign Message" ;
+    rdfs:comment "Answer message from the service provider with the blind signed reputation token" .
+
+rep:ExchangeTokenMessage rdfs:subClassOf rep:Message ;
+    rdfs:label "Message: Exchange Token" ;
+    rdfs:comment "Send the reputation token along with the blinded reputation token." .
+
+rep:VerifyMessage rdfs:subClassOf rep:Message ;
+    rdfs:label "Message: Verify Reputation Token Exchange" ;
+    rdfs:comment "This message is sent after the exchange of the reputation token, it contains the blinded token, the original random hash and the reputation token itself. The blinded token verifies the reputation token and the random hash verfies the correctness of the Signature of the random hash." .
+
+rep:RatingMessage rdfs:subClassOf rep:Message ;
+    rdfs:label "Message: Rating" ;
+    rdfs:comment "Message to the Service Provider which contains the Rating, the comment and the reputation token which authorises the to rate the person which sent the reputation token. The signature inside the reputation token is only made by the person who owns the private key which is associated with the public key of the certificate." .
+
+rep:VerificationMessage rdfs:subClassOf rep:Message ;
+    rdfs:label "Message: Verification" ;
+    rdfs:comment "Answer from the Service Provider who checks the blind signed token and the random hash. If the answer is 'true' the Reputation Token is correct and the rating is authorised. If the answer is 'false', then ..." .
+
+
+rep:Reputation a rdfs:Class ;
+    rdfs:label "Reputation" ;
+    rdfs:comment "Reputation object to rate a other person of a transaction" .
+
+rep:RepPerson a rdfs:Class ;
+    rdfs:label "reputation of person" ;
+    rdfs:comment "Describes a Person who gets rated" .
+
+rep:Requestor rdfs:subClassOf rep:RepPerson ;
+    a rep:repPerson ;
+    rdfs:label "Requestor" ;
+    rdfs:comment "The person who bought something" .
+
+rep:Supplier rdfs:subClassOf rep:RepPerson ;
+    a rep:repPerson ;
+    rdfs:label "Supplier" ;
+    rdfs:comment "The person who sold something" .
+
+rep:rating a rdf:Property ;
+    rdfs:label "rating" ;
+    rdfs:comment "Rating of that transaction" ;
+    rdfs:domain rep:Reputation .
+
+rep:ratingComment a rdf:Property ;
+    rdfs:label "comment of rating" ;
+    rdfs:comment "A comment or reason of the rating" ;
+    rdfs:domain rep:Reputation .
+
+rep:reputationToken a rdf:Property ;
+    rdfs:label "reputation token" ;
+    rdfs:comment "Reputation token which authorises the rating" ;
+    rdfs:domain rep:Reputation .
+
+rep:blindSignedReputationToken a rdf:Property ;
+    rdfs:label "blind signed reputation token" ;
+    rdfs:comment "Blinded signed reputation token" .
+
+rep:randomHash a rdf:Property ;
+    rdfs:label "random hash" ;
+    rdfs:comment "Random Hash in SHA256, SHA512" ;
+    rdfs:domain rep:Reputation .
+
+# Hash functions
+rep:SHA256 rdfs:label "SHA256" ;
+    dc:title "SHA256" .
+
+rep:SHA512 rdfs:label "SHA512" ;
+    dc:title "SHA512" .
+
+rep:RSA4096 rdfs:label "RSA4096" ;
+    dc:title "Key generation algorithm RSA 4096 bit" .
+
+rep:ed25519 rdfs:label "ED25519" ;
+    dc:title "Key generation algorithm ed25519 elliptic curve" .

@@ -1,0 +1,31 @@
+@prefix msg:   <https://w3id.org/won/message#> .
+@prefix conn:  <https://node.matchat.org/won/resource/connection/> .
+@prefix con:   <https://w3id.org/won/content#> .
+@prefix rdfg:  <http://www.w3.org/2004/03/trix/rdfg-1/> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix match: <https://w3id.org/won/matching#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix cert:  <http://www.w3.org/ns/auth/cert#> .
+@prefix local: <https://node.matchat.org/won/resource/> .
+@prefix sig:   <http://icp.it-risk.iwvi.uni-koblenz.de/ontologies/signature.owl#> .
+@prefix s:     <http://schema.org/> .
+@prefix dct:   <http://purl.org/dc/terms/> .
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix won:   <https://w3id.org/won/core#> .
+@prefix event: <https://node.matchat.org/won/resource/event/> .
+@prefix atom:  <https://node.matchat.org/won/resource/atom/> .
+@prefix dc:    <http://purl.org/dc/elements/1.1/> .
+
+<this:eventuri> <https://w3id.org/won/ext/reputation#ExchangeReputationToken>
+[ <https://w3id.org/won/ext/reputation#ReputationToken>
+             [ <https://w3id.org/won/ext/reputation#certificate>
+                       [ <https://w3id.org/won/ext/reputation#publicKey>
+                                 "Sun EC public key, 192 bits\n  public x coord: 1378290514078408291552166374107254426686406379981894693847\n  public y coord: 2207578430103468282243674045282959875774030698931499223628\n  parameters: secp192r1 [NIST P-192, X9.62 prime192v1] (1.2.840.10045.3.1.1)" ;
+                         <https://w3id.org/won/ext/reputation#userId>
+                                 "1"
+                       ] ;
+               <https://w3id.org/won/ext/reputation#signedRandomHash>
+                       "MDQCGC/TI02R4dS8ut4+Yt6Af9YK1HYPFLGQ/gIYNXM2gtlUngLox8gdBMVILtqFb6Xcjo+c"
+             ]
+] .

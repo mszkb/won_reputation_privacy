@@ -254,7 +254,7 @@ public class CLI {
         WonMessage msg = RDFMessages.generateRandomHash();
         Dataset content = msg.getMessageContent();
         String datasetString = RdfUtils.writeDatasetToString(content, Lang.TRIG);
-        RDFDataMgr.write(System.out, msg.getCompleteDataset(), Lang.TRIG);
+        RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
         String[] split = datasetString.split("\n");     // ugly spliting
         this.myRandomHash = split[2].trim().split("\"")[1];   // Random Hash        System.out.println("\nGenerated random hash - exchange this with the other person");

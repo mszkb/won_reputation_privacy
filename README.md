@@ -40,6 +40,11 @@ client to the SP system. Look at CmdApplicationTests setUp().
 These steps have to be done by every user to get a certificate for the Demo. In the webofneeds we already have the
 certificate/public key in the atoms, so this part is only meant for demo purpose.
   
+See docs/reputationTokenMessage.txt how to use the output of the CLI tool for the WoN-Chat.
+Your message has to begin with  
+\<this:eventuri> \<https://w3id.org/won/ext/reputation#MESSAGETYPE> \[  
+    \<CONTENT>  
+]  
   
   
 **Alice, Bob, Charlie, Carol basic protocol commands:**  
@@ -82,7 +87,7 @@ In WoN we use so-called bots which can perform tasks on behalf of the user. eg. 
 
 To see how the reputation token algorithm works between user, you can look at /src/test/java/WonProtocolE2ETest.java. In this test file we simulate the exchange of the reputation-tokens.
 Quick overview between the Users Bob and Alice:
-
+``
 - Bob and Alice registers to the system to get a certificate (registerWithSystem)
 - They generate a random number and hash them (createRandomHash)
 - They exchange the random hashed number (exchangeHash)
