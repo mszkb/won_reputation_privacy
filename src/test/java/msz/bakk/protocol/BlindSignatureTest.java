@@ -33,7 +33,6 @@ public class BlindSignatureTest extends TestBase {
     private ReputationServer reputationServer;
     private Thread reputationServerThread;
 
-    @Before
     public void createClients() throws InterruptedException, NoSuchProviderException, NoSuchAlgorithmException {
         this.params = new TrustedParty().generateParams();
         this.r = new Requestor(this.params);
@@ -48,14 +47,12 @@ public class BlindSignatureTest extends TestBase {
         this.blindSigner = new BlindSignature();
     }
 
-    @Test
     public void test_blindSignature() {
         byte[] message = "My BLIND MESSAGE".getBytes(StandardCharsets.UTF_8);
         byte[] blindedSignature = this.blindSigner.blindAndSign(message);
         Assert.assertTrue(this.blindSigner.verify(blindedSignature, message));
     }
 
-    @Test
     public void runSP_testBlindAndSign_valid() throws IOException, NoSuchAlgorithmException, InterruptedException {
         String randomHashAlice = HashUtils.generateRandomHash();
 
@@ -65,7 +62,7 @@ public class BlindSignatureTest extends TestBase {
         alice.writeOut("verifyraw " + blindedHash + " " + randomHashAlice);
         assertThat(alice.readIn(), is("valid"));
     }
-    @Test
+
     public void runSP_testBlindAndSign_invalid() throws IOException, NoSuchAlgorithmException, InterruptedException {
         String randomHashAlice = HashUtils.generateRandomHash();
 
