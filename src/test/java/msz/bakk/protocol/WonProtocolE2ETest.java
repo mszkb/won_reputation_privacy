@@ -34,12 +34,6 @@ public class WonProtocolE2ETest {
     private Signer sp;
     private BlindSignature blindSigner;
 
-
-    @Before
-    public void optainACL() {
-
-    }
-
     @Before
     public void createClients() throws NoSuchProviderException, NoSuchAlgorithmException {
         this.params = new TrustedParty().generateParams();
