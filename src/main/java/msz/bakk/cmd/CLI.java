@@ -78,7 +78,7 @@ public class CLI {
         LOG.info("Use Parameters for Signer");
         this.serviceProvider = new Signer(this.params);
 
-        LOG.info("Initilize Bling Signature RSA Utils and Rating store");
+        LOG.info("Initilize Blind Signature RSA Utils and Rating store");
         this.blindSigner = new BlindSignature();
         this.ratingStore = new HashMap<>();
         this.usedTokens = new HashMap<>();
