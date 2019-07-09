@@ -3,12 +3,12 @@ package msz.bakk.cmd;
 import msz.bakk.protocol.Message.Certificate;
 import msz.bakk.protocol.Message.Reputationtoken;
 import msz.bakk.protocol.Utils.MessageUtils;
+import msz.bakk.protocol.util.WonRepRdfUtils;
+import msz.bakk.protocol.vocabulary.REP;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import won.protocol.message.WonMessage;
 import won.protocol.message.WonMessageBuilder;
-import won.protocol.util.WonRepRdfUtils;
-import won.protocol.vocabulary.REP;
 
 import java.net.URI;
 import java.security.NoSuchAlgorithmException;
