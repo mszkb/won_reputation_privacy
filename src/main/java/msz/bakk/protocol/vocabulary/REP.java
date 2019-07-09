@@ -8,8 +8,8 @@ public class REP {
     public static final String BASE_URI = "https://w3id.org/won/ext/reputation#";
     public static final String DEFAULT_PREFIX = "srep";
     private static Model m = ModelFactory.createDefaultModel();
-    public static final Property CERTIFICATE = m.createProperty(BASE_URI + " certificate");
-    public static final Property USER_ID = m.createProperty(BASE_URI + " userId");
+    public static final Property CERTIFICATE = m.createProperty(BASE_URI + "certificate");
+    public static final Property USER_ID = m.createProperty(BASE_URI + "userId");
     public static final Property PUBLIC_KEY = m.createProperty(BASE_URI + " publicKey");
     public static final Property REPUTATIONTOKEN = m.createProperty(BASE_URI + "ReputationToken");
     public static final Property BLIND_SIGNED_REPUTATIONTOKEN = m
