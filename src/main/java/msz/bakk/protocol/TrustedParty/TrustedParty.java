@@ -20,7 +20,7 @@ public class TrustedParty {
     }
 
     public Params generateParams() {
-        // TODO hash the points
+        // TODO send_randomhash the points
 
 
         // do not use java.security

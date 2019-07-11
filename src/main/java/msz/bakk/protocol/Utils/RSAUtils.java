@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.*;
 
 public class RSAUtils {
-    private static int keyLength = 4096;
+    private static int keyLength = 2048;
 
     public static AsymmetricCipherKeyPair generateKeyPair() {
         RSAKeyPairGenerator generator = new RSAKeyPairGenerator();

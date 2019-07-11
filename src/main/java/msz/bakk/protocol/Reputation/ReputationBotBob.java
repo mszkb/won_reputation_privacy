@@ -19,7 +19,7 @@ import java.security.*;
  * Bob waits for incoming connection of Alice
  * Bob recieves the random Hash from Alice
  * Bob creates also a random Hash and sends it to Alice
- * After sending Bob immediatly signs the hash and sends it with his cert to the Reputation Server
+ * After sending Bob immediatly signs the send_randomhash and sends it with his cert to the Reputation Server
  * Bob waits until the Reputation Server sends a blind signature back (Problem, do not wait)
  * Bob waits for incomming connection of Alice
  * Bob recieves the ReputationToken
@@ -119,8 +119,8 @@ public class ReputationBotBob implements IRepuationBot {
 
             switch (parts[0]) {
                 case "[1]":
-                    LOG.info("we get random hash from alice");
-                    // Alice has sent the random hash
+                    LOG.info("we get random send_randomhash from alice");
+                    // Alice has sent the random send_randomhash
                     this.randomHashFromAlice = parts[1];
                     exchangeRandomHash(parts[1]);
                     break;

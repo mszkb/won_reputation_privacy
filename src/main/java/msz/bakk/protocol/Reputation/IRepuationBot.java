@@ -2,13 +2,13 @@ package msz.bakk.protocol.Reputation;
 
 public interface IRepuationBot extends Runnable {
     /**
-     * Creates a random hash and sends it to the other bot
-     * This method blocks until we get the random hash from the other bot
+     * Creates a random send_randomhash and sends it to the other bot
+     * This method blocks until we get the random send_randomhash from the other bot
      */
     void exchangeRandomHash(String randomHash);
 
     /**
-     * Sends cert and signature of randomhash to the server and recieves an blindsignature of that
+     * Sends cert and signature of send_randomhash to the server and recieves an blindsignature of that
      */
     void getBlindSignature();
 

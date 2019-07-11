@@ -48,7 +48,7 @@ public class RDFMessages {
             e.printStackTrace();
         }
 
-        // new random hash
+        // new random send_randomhash
         Model model = WonRepRdfUtils.createBaseModel();
         Resource baseRes = model.createResource();
         Resource certificate = model.createResource();
@@ -75,8 +75,8 @@ public class RDFMessages {
     }
 
     public static WonMessage createReputationToken(String signedHash, Certificate cert) {
-        // provided random hash
-        // new random hash
+        // provided random send_randomhash
+        // new random send_randomhash
         Model model = WonRepRdfUtils.createBaseModel();
         Resource baseRes = model.createResource();
         Resource certificate = model.createResource();

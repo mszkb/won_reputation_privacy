@@ -83,12 +83,12 @@ public class CmdApplicationTests {
     @Test
     public void test_genrandom() {
         //
-        // We test a simple random hash generation
+        // We test a simple random send_randomhash generation
         // To test it we match it with a regex
         //
 
-        assertThat(cliBob.genrandomhash().matches(testHash));
-        assertThat(cliAlice.genrandomhash().matches(testHash));
+        assertThat(cliBob.send_randomhash().matches(testHash));
+        assertThat(cliAlice.send_randomhash().matches(testHash));
     }
 
     @Test
@@ -97,36 +97,36 @@ public class CmdApplicationTests {
         // In the exchange process each actor creates a reputation token
         // Inside the reputation token there is the public key of the user
         // So to verify the signature we take that public key and check
-        // it along with the original hash and the signature
+        // it along with the original send_randomhash and the signature
         //
 
-        String randomHashBob = cliBob.genrandomhash();
-        cliAlice.exchangehash(randomHashBob);
-        assertTrue(cliAlice.verifyhashsignature(randomHashBob));
+        String randomHashBob = cliBob.send_randomhash();
+        cliAlice.receive_hash(randomHashBob);
+        assertTrue(cliAlice.verify_hash(randomHashBob));
 
-        String randomHashAlice = cliAlice.genrandomhash();
-        cliBob.exchangehash(randomHashAlice);
-        assertTrue(cliBob.verifyhashsignature(randomHashAlice));
+        String randomHashAlice = cliAlice.send_randomhash();
+        cliBob.receive_hash(randomHashAlice);
+        assertTrue(cliBob.verify_hash(randomHashAlice));
     }
 
     @Test
     public void test_blindReputationtoken() throws NoSuchProviderException, IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         //
-        // We create a random hash - exchange it - create a reputation token
+        // We create a random send_randomhash - exchange it - create a reputation token
         // then we send it to the SP to blind sign it
         //
 
-        String randomHashAlice = cliAlice.genrandomhash();
-        String randomHashBob = cliBob.genrandomhash();
+        String randomHashAlice = cliAlice.send_randomhash();
+        String randomHashBob = cliBob.send_randomhash();
 
-        cliAlice.exchangehash(randomHashBob);
-        cliBob.exchangehash(randomHashAlice);
+        cliAlice.receive_hash(randomHashBob);
+        cliBob.receive_hash(randomHashAlice);
 
-        assertTrue(cliAlice.verifyhashsignature(randomHashBob));
-        assertTrue(cliBob.verifyhashsignature(randomHashAlice));
+        assertTrue(cliAlice.verify_hash(randomHashBob));
+        assertTrue(cliBob.verify_hash(randomHashAlice));
 
-        String encodedTokenAlice = cliAlice.blindreputationtokenmsg();
-        String encodedTokenBob = cliBob.blindreputationtokenmsg();
+        String encodedTokenAlice = cliAlice.send_token_sp();
+        String encodedTokenBob = cliBob.send_token_sp();
 
         String blindedTokenAlice = cliSP.blindsigntoken(encodedTokenAlice);
         String blindedTokenBob = cliSP.blindsigntoken(encodedTokenBob);
@@ -137,49 +137,55 @@ public class CmdApplicationTests {
 
     @Test
     public void test_exchangeToken() throws NoSuchProviderException, IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-        String randomHashAlice = cliAlice.genrandomhash();
-        String randomHashBob = cliBob.genrandomhash();
+        String randomHashAlice = cliAlice.send_randomhash();
+        String randomHashBob = cliBob.send_randomhash();
 
-        cliAlice.exchangehash(randomHashBob);
-        cliBob.exchangehash(randomHashAlice);
+        cliAlice.receive_hash(randomHashBob);
+        cliBob.receive_hash(randomHashAlice);
 
-        assertTrue(cliAlice.verifyhashsignature(randomHashBob));
-        assertTrue(cliBob.verifyhashsignature(randomHashAlice));
+        assertTrue(cliAlice.verify_hash(randomHashBob));
+        assertTrue(cliBob.verify_hash(randomHashAlice));
 
-        String encodedTokenAlice = cliAlice.blindreputationtokenmsg();
-        String encodedTokenBob = cliBob.blindreputationtokenmsg();
+        String encodedTokenAlice = cliAlice.send_token_sp();
+        String encodedTokenBob = cliBob.send_token_sp();
 
         String blindedTokenAlice = cliSP.blindsigntoken(encodedTokenAlice);
         String blindedTokenBob = cliSP.blindsigntoken(encodedTokenBob);
 
-        String[] tokensAlice = cliAlice.createexchangetokenmsg(blindedTokenAlice);
-        String[] tokensBob = cliAlice.createexchangetokenmsg(blindedTokenBob);
+        cliAlice.receive_blindtoken_sp(blindedTokenAlice);
+        cliBob.receive_blindtoken_sp(blindedTokenBob);
+
+        String[] tokensAlice = cliAlice.send_token_user();
+        String[] tokensBob = cliAlice.send_token_user();
     }
 
     @Test
     public void test_rate() throws NoSuchProviderException, IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-        String randomHashAlice = cliAlice.genrandomhash();
-        String randomHashBob = cliBob.genrandomhash();
+        String randomHashAlice = cliAlice.send_randomhash();
+        String randomHashBob = cliBob.send_randomhash();
 
-        cliAlice.exchangehash(randomHashBob);   // alice recieves bob's random hash
-        cliBob.exchangehash(randomHashAlice);   // bob recieves alice's random hash
+        cliAlice.receive_hash(randomHashBob);   // alice recieves bob's random send_randomhash
+        cliBob.receive_hash(randomHashAlice);   // bob recieves alice's random send_randomhash
 
-        assertTrue(cliAlice.verifyhashsignature(randomHashBob));
-        assertTrue(cliBob.verifyhashsignature(randomHashAlice));
+        assertTrue(cliAlice.verify_hash(randomHashBob));
+        assertTrue(cliBob.verify_hash(randomHashAlice));
 
-        String encodedTokenAlice = cliAlice.blindreputationtokenmsg();  // This is the message the SP gets to blind sign given token
-        String encodedTokenBob = cliBob.blindreputationtokenmsg();      // This is the message the SP gets to blind sign given token
+        String encodedTokenAlice = cliAlice.send_token_sp();  // This is the message the SP gets to blind sign given token
+        String encodedTokenBob = cliBob.send_token_sp();      // This is the message the SP gets to blind sign given token
 
         String blindedTokenAlice = cliSP.blindsigntoken(encodedTokenAlice); // SP returns blind signed token
         String blindedTokenBob = cliSP.blindsigntoken(encodedTokenBob);     // --"--
 
-        String[] tokensAlice = cliAlice.createexchangetokenmsg(blindedTokenAlice);  // Alice creates the message to exchange the reputation token to bob
-        String[] tokensBob = cliBob.createexchangetokenmsg(blindedTokenBob);      // Bob -----"------ to alice
+        cliAlice.receive_blindtoken_sp(blindedTokenAlice);
+        cliBob.receive_blindtoken_sp(blindedTokenBob);
+
+        String[] tokensAlice = cliAlice.send_token_user();  // Alice creates the message to exchange the reputation token to bob
+        String[] tokensBob = cliBob.send_token_user();      // Bob -----"------ to alice
 
         // To rate Bob Alice uses the tokens from bob
-        // to verify the signature, alice uses her randomhash
-        this.cliAlice.rateuser(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1]);
-        this.cliBob.rateuser(5.0f, "Everything fine", tokensAlice[0], tokensAlice[1]);
+        // to verify the signature, alice uses her send_randomhash
+        this.cliAlice.rate_user(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1]);
+        this.cliBob.rate_user(5.0f, "Everything fine", tokensAlice[0], tokensAlice[1]);
 
         assertThat(this.cliSP.rate(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1], randomHashAlice)).isEqualTo("OK");
         assertThat(this.cliSP.rate(5.0f, "Everything fine", tokensAlice[0], tokensAlice[1], randomHashBob)).isEqualTo("OK");
@@ -187,28 +193,31 @@ public class CmdApplicationTests {
 
     @Test
     public void test_checkRating() throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, IOException, NoSuchProviderException {
-        String randomHashAlice = cliAlice.genrandomhash();
-        String randomHashBob = cliBob.genrandomhash();
+        String randomHashAlice = cliAlice.send_randomhash();
+        String randomHashBob = cliBob.send_randomhash();
 
-        cliAlice.exchangehash(randomHashBob);   // alice recieves bob's random hash
-        cliBob.exchangehash(randomHashAlice);   // bob recieves alice's random hash
+        cliAlice.receive_hash(randomHashBob);   // alice recieves bob's random send_randomhash
+        cliBob.receive_hash(randomHashAlice);   // bob recieves alice's random send_randomhash
 
-        assertTrue(cliAlice.verifyhashsignature(randomHashBob));
-        assertTrue(cliBob.verifyhashsignature(randomHashAlice));
+        assertTrue(cliAlice.verify_hash(randomHashBob));
+        assertTrue(cliBob.verify_hash(randomHashAlice));
 
-        String encodedTokenAlice = cliAlice.blindreputationtokenmsg();  // This is the message the SP gets to blind sign given token
-        String encodedTokenBob = cliBob.blindreputationtokenmsg();      // This is the message the SP gets to blind sign given token
+        String encodedTokenAlice = cliAlice.send_token_sp();  // This is the message the SP gets to blind sign given token
+        String encodedTokenBob = cliBob.send_token_sp();      // This is the message the SP gets to blind sign given token
 
         String blindedTokenAlice = cliSP.blindsigntoken(encodedTokenAlice); // SP returns blind signed token
         String blindedTokenBob = cliSP.blindsigntoken(encodedTokenBob);     // --"--
 
-        String[] tokensAlice = cliAlice.createexchangetokenmsg(blindedTokenAlice);  // Alice creates the message to exchange the reputation token to bob
-        String[] tokensBob = cliBob.createexchangetokenmsg(blindedTokenBob);      // Bob -----"------ to alice
+        cliAlice.receive_blindtoken_sp(blindedTokenAlice);
+        cliBob.receive_blindtoken_sp(blindedTokenBob);
+
+        String[] tokensAlice = cliAlice.send_token_user();  // Alice creates the message to exchange the reputation token to bob
+        String[] tokensBob = cliBob.send_token_user();      // Bob -----"------ to alice
 
         // To rate Bob Alice uses the tokens from bob
-        // to verify the signature, alice uses her randomhash
-        this.cliAlice.rateuser(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1]);
-        this.cliBob.rateuser(5.0f, "Everything fine", tokensAlice[0], tokensAlice[1]);
+        // to verify the signature, alice uses her send_randomhash
+        this.cliAlice.rate_user(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1]);
+        this.cliBob.rate_user(5.0f, "Everything fine", tokensAlice[0], tokensAlice[1]);
 
         assertThat(this.cliSP.rate(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1], randomHashAlice)).isEqualTo("OK");
         assertThat(this.cliSP.rate(5.0f, "Everything fine", tokensAlice[0], tokensAlice[1], randomHashBob)).isEqualTo("OK");
@@ -218,28 +227,31 @@ public class CmdApplicationTests {
 
     @Test
     public void test_fail_rate_sametoken() throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, IOException, NoSuchProviderException {
-        String randomHashAlice = cliAlice.genrandomhash();
-        String randomHashBob = cliBob.genrandomhash();
+        String randomHashAlice = cliAlice.send_randomhash();
+        String randomHashBob = cliBob.send_randomhash();
 
-        cliAlice.exchangehash(randomHashBob);   // alice recieves bob's random hash
-        cliBob.exchangehash(randomHashAlice);   // bob recieves alice's random hash
+        cliAlice.receive_hash(randomHashBob);   // alice recieves bob's random send_randomhash
+        cliBob.receive_hash(randomHashAlice);   // bob recieves alice's random send_randomhash
 
-        assertTrue(cliAlice.verifyhashsignature(randomHashBob));
-        assertTrue(cliBob.verifyhashsignature(randomHashAlice));
+        assertTrue(cliAlice.verify_hash(randomHashBob));
+        assertTrue(cliBob.verify_hash(randomHashAlice));
 
-        String encodedTokenAlice = cliAlice.blindreputationtokenmsg();  // This is the message the SP gets to blind sign given token
-        String encodedTokenBob = cliBob.blindreputationtokenmsg();      // This is the message the SP gets to blind sign given token
+        String encodedTokenAlice = cliAlice.send_token_sp();  // This is the message the SP gets to blind sign given token
+        String encodedTokenBob = cliBob.send_token_sp();      // This is the message the SP gets to blind sign given token
 
         String blindedTokenAlice = cliSP.blindsigntoken(encodedTokenAlice); // SP returns blind signed token
         String blindedTokenBob = cliSP.blindsigntoken(encodedTokenBob);     // --"--
 
-        String[] tokensAlice = cliAlice.createexchangetokenmsg(blindedTokenAlice);  // Alice creates the message to exchange the reputation token to bob
-        String[] tokensBob = cliBob.createexchangetokenmsg(blindedTokenBob);      // Bob -----"------ to alice
+        cliAlice.receive_blindtoken_sp(blindedTokenAlice);
+        cliBob.receive_blindtoken_sp(blindedTokenBob);
+
+        String[] tokensAlice = cliAlice.send_token_user();  // Alice creates the message to exchange the reputation token to bob
+        String[] tokensBob = cliBob.send_token_user();      // Bob -----"------ to alice
 
         // To rate Bob Alice uses the tokens from bob
-        // to verify the signature, alice uses her randomhash
-        this.cliAlice.rateuser(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1]);
-        this.cliBob.rateuser(5.0f, "Everything fine", tokensAlice[0], tokensAlice[1]);
+        // to verify the signature, alice uses her send_randomhash
+        this.cliAlice.rate_user(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1]);
+        this.cliBob.rate_user(5.0f, "Everything fine", tokensAlice[0], tokensAlice[1]);
 
         assertThat(this.cliSP.rate(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1], randomHashAlice)).isEqualTo("OK");
 
@@ -254,83 +266,92 @@ public class CmdApplicationTests {
 
     @Test
     public void test_rate_multiple() throws NoSuchProviderException, IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-        String randomHashAlice = cliAlice.genrandomhash();
-        String randomHashBob = cliBob.genrandomhash();
+        String randomHashAlice = cliAlice.send_randomhash();
+        String randomHashBob = cliBob.send_randomhash();
 
-        cliAlice.exchangehash(randomHashBob);   // alice recieves bob's random hash
-        cliBob.exchangehash(randomHashAlice);   // bob recieves alice's random hash
+        cliAlice.receive_hash(randomHashBob);   // alice recieves bob's random send_randomhash
+        cliBob.receive_hash(randomHashAlice);   // bob recieves alice's random send_randomhash
 
-        assertTrue(cliAlice.verifyhashsignature(randomHashBob));
-        assertTrue(cliBob.verifyhashsignature(randomHashAlice));
+        assertTrue(cliAlice.verify_hash(randomHashBob));
+        assertTrue(cliBob.verify_hash(randomHashAlice));
 
-        String encodedTokenAlice = cliAlice.blindreputationtokenmsg();  // This is the message the SP gets to blind sign given token
-        String encodedTokenBob = cliBob.blindreputationtokenmsg();      // This is the message the SP gets to blind sign given token
+        String encodedTokenAlice = cliAlice.send_token_sp();  // This is the message the SP gets to blind sign given token
+        String encodedTokenBob = cliBob.send_token_sp();      // This is the message the SP gets to blind sign given token
 
         String blindedTokenAlice = cliSP.blindsigntoken(encodedTokenAlice); // SP returns blind signed token
         String blindedTokenBob = cliSP.blindsigntoken(encodedTokenBob);     // --"--
 
-        String[] tokensAlice = cliAlice.createexchangetokenmsg(blindedTokenAlice);  // Alice creates the message to exchange the reputation token to bob
-        String[] tokensBob = cliBob.createexchangetokenmsg(blindedTokenBob);      // Bob -----"------ to alice
+        cliAlice.receive_blindtoken_sp(blindedTokenAlice);
+        cliBob.receive_blindtoken_sp(blindedTokenBob);
+
+        String[] tokensAlice = cliAlice.send_token_user();  // Alice creates the message to exchange the reputation token to bob
+        String[] tokensBob = cliBob.send_token_user();      // Bob -----"------ to alice
 
         // To rate Bob Alice uses the tokens from bob
-        // to verify the signature, alice uses her randomhash
-        this.cliAlice.rateuser(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1]);
-        this.cliBob.rateuser(5.0f, "Everything fine", tokensAlice[0], tokensAlice[1]);
+        // to verify the signature, alice uses her send_randomhash
+        this.cliAlice.rate_user(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1]);
+        this.cliBob.rate_user(5.0f, "Everything fine", tokensAlice[0], tokensAlice[1]);
 
         assertThat(this.cliSP.rate(4.0f, "Smooth and fast transaction", tokensBob[0], tokensBob[1], randomHashAlice)).isEqualTo("OK");
         assertThat(this.cliSP.rate(5.0f, "Everything fine", tokensAlice[0], tokensAlice[1], randomHashBob)).isEqualTo("OK");
 
 
 
-        randomHashAlice = cliAlice.genrandomhash();
-        String randomHashCarol = cliCarol.genrandomhash();
+        randomHashAlice = cliAlice.send_randomhash();
+        String randomHashCarol = cliCarol.send_randomhash();
 
-        cliAlice.exchangehash(randomHashCarol);   // alice recieves bob's random hash
-        cliCarol.exchangehash(randomHashAlice);   // bob recieves alice's random hash
+        cliAlice.receive_hash(randomHashCarol);   // alice recieves bob's random send_randomhash
+        cliCarol.receive_hash(randomHashAlice);   // bob recieves alice's random send_randomhash
 
-        assertTrue(cliAlice.verifyhashsignature(randomHashCarol));
-        assertTrue(cliCarol.verifyhashsignature(randomHashAlice));
+        assertTrue(cliAlice.verify_hash(randomHashCarol));
+        assertTrue(cliCarol.verify_hash(randomHashAlice));
 
-        encodedTokenAlice = cliAlice.blindreputationtokenmsg();  // This is the message the SP gets to blind sign given token
-        String encodedTokenCarol = cliCarol.blindreputationtokenmsg();      // This is the message the SP gets to blind sign given token
+        encodedTokenAlice = cliAlice.send_token_sp();  // This is the message the SP gets to blind sign given token
+        String encodedTokenCarol = cliCarol.send_token_sp();      // This is the message the SP gets to blind sign given token
 
         blindedTokenAlice = cliSP.blindsigntoken(encodedTokenAlice); // SP returns blind signed token
         String blindedTokenCarol = cliSP.blindsigntoken(encodedTokenCarol);     // --"--
 
-        tokensAlice = cliAlice.createexchangetokenmsg(blindedTokenAlice);  // Alice creates the message to exchange the reputation token to bob
-        String[] tokensCarol = cliCarol.createexchangetokenmsg(blindedTokenCarol);      // Bob -----"------ to alice
+        cliAlice.receive_blindtoken_sp(blindedTokenAlice);
+        cliBob.receive_blindtoken_sp(blindedTokenBob);
+
+        tokensAlice = cliAlice.send_token_user();  // Alice creates the message to exchange the reputation token to bob
+        String[] tokensCarol = cliCarol.send_token_user();      // Bob -----"------ to alice
 
         // To rate Bob Alice uses the tokens from bob
-        // to verify the signature, alice uses her randomhash
-        this.cliAlice.rateuser(4.0f, "Smooth and fast transaction", tokensCarol[0], tokensCarol[1]);
-        this.cliCarol.rateuser(3.0f, "Okay", tokensAlice[0], tokensAlice[1]);
+        // to verify the signature, alice uses her send_randomhash
+        this.cliAlice.rate_user(4.0f, "Smooth and fast transaction", tokensCarol[0], tokensCarol[1]);
+        this.cliCarol.rate_user(3.0f, "Okay", tokensAlice[0], tokensAlice[1]);
 
         this.cliSP.rate(4.0f, "Smooth and fast transaction", tokensCarol[0], tokensCarol[1], randomHashAlice);
         this.cliSP.rate(3.0f, "Okay", tokensAlice[0], tokensAlice[1], randomHashCarol);
 
 
-        randomHashAlice = cliAlice.genrandomhash();
-        String randomHashCharlie = cliCharlie.genrandomhash();
+        randomHashAlice = cliAlice.send_randomhash();
+        String randomHashCharlie = cliCharlie.send_randomhash();
 
-        cliAlice.exchangehash(randomHashCharlie);   // alice recieves bob's random hash
-        cliCharlie.exchangehash(randomHashAlice);   // bob recieves alice's random hash
+        cliAlice.receive_hash(randomHashCharlie);   // alice recieves bob's random send_randomhash
+        cliCharlie.receive_hash(randomHashAlice);   // bob recieves alice's random send_randomhash
 
-        assertTrue(cliAlice.verifyhashsignature(randomHashCharlie));
-        assertTrue(cliCharlie.verifyhashsignature(randomHashAlice));
+        assertTrue(cliAlice.verify_hash(randomHashCharlie));
+        assertTrue(cliCharlie.verify_hash(randomHashAlice));
 
-        encodedTokenAlice = cliAlice.blindreputationtokenmsg();  // This is the message the SP gets to blind sign given token
-        String encodedTokenCharlie = cliCharlie.blindreputationtokenmsg();      // This is the message the SP gets to blind sign given token
+        encodedTokenAlice = cliAlice.send_token_sp();  // This is the message the SP gets to blind sign given token
+        String encodedTokenCharlie = cliCharlie.send_token_sp();      // This is the message the SP gets to blind sign given token
 
         blindedTokenAlice = cliSP.blindsigntoken(encodedTokenAlice); // SP returns blind signed token
         String blindedTokenCharlie = cliSP.blindsigntoken(encodedTokenCharlie);     // --"--
 
-        tokensAlice = cliAlice.createexchangetokenmsg(blindedTokenAlice);  // Alice creates the message to exchange the reputation token to bob
-        String[] tokensCharlie = cliCharlie.createexchangetokenmsg(blindedTokenCharlie);      // Bob -----"------ to alice
+        cliAlice.receive_blindtoken_sp(blindedTokenAlice);
+        cliBob.receive_blindtoken_sp(blindedTokenBob);
+
+        tokensAlice = cliAlice.send_token_user();  // Alice creates the message to exchange the reputation token to bob
+        String[] tokensCharlie = cliCharlie.send_token_user();      // Bob -----"------ to alice
 
         // To rate Bob Alice uses the tokens from bob
-        // to verify the signature, alice uses her randomhash
-        this.cliAlice.rateuser(4.0f, "Smooth and fast transaction", tokensCharlie[0], tokensCharlie[1]);
-        this.cliCharlie.rateuser(1.0f, "Took too long (1 day)", tokensAlice[0], tokensAlice[1]);
+        // to verify the signature, alice uses her send_randomhash
+        this.cliAlice.rate_user(4.0f, "Smooth and fast transaction", tokensCharlie[0], tokensCharlie[1]);
+        this.cliCharlie.rate_user(1.0f, "Took too long (1 day)", tokensAlice[0], tokensAlice[1]);
 
         this.cliSP.rate(4.0f, "Smooth and fast transaction", tokensCharlie[0], tokensCharlie[1], randomHashAlice);
         this.cliSP.rate(1.0f, "Took too long (1 day)", tokensAlice[0], tokensAlice[1], randomHashCharlie);

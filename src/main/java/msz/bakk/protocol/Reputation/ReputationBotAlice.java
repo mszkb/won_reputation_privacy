@@ -19,7 +19,7 @@ import java.security.*;
  * Alice connects to Bob
  * Alice sends the random Hash to Bob
  * Alice waits until Bob sends his random Hash
- * Alice signs the hash and sends it with her cert to the RepuationServer
+ * Alice signs the send_randomhash and sends it with her cert to the RepuationServer
  * Alice waits until the ReputationServer sends a blind signature to her
  * Alice connects to Bob again
  * Alice sends the blind signature to Bob
@@ -104,7 +104,7 @@ public class ReputationBotAlice implements IRepuationBot {
             if(!standalone) {
                 this.connectToBob();            // connect to bob
             }
-            this.exchangeRandomHash();      // immediatlty send random hash to bob
+            this.exchangeRandomHash();      // immediatlty send random send_randomhash to bob
             this.commandDispatch();         // wait for bob and continue protocol
         } catch (IOException e) {
             e.printStackTrace();
@@ -132,7 +132,7 @@ public class ReputationBotAlice implements IRepuationBot {
                 case "[2]":
                     // bob answered with his  reputationtoken
                     // now we are obligated to rate the transaction
-                    // open another socket to the SP with token, original hash, message and rating
+                    // open another socket to the SP with token, original send_randomhash, message and rating
                     this.blindedReputationTokenFromBob = parts[1];
                     this.encodedReputationTokenFromBob = parts[2];
                     this.originalReputationTokenFromBob = MessageUtils.decodeRT(parts[2]);
@@ -172,7 +172,7 @@ public class ReputationBotAlice implements IRepuationBot {
         byte[] signedHashBob = null;
 
         if(!standalone) {
-            LOG.info("Contact client: We need to sign the random hash");
+            LOG.info("Contact client: We need to sign the random send_randomhash");
             this.outMsgWonNode.println("[1] " + this.randomHashFromBob);
             try {
                 return MessageUtils.decodeToBytes(this.incMsgWonNode.readLine().split(" ")[1]);
@@ -213,10 +213,10 @@ public class ReputationBotAlice implements IRepuationBot {
         try {
             this.randomHashAliceOriginal = HashUtils.generateRandomHash();
         } catch (NoSuchAlgorithmException e) {
-            LOG.error("Could not create random hash: " + e.getMessage());
+            LOG.error("Could not create random send_randomhash: " + e.getMessage());
         }
 
-        LOG.info("sending randomhash to bob");
+        LOG.info("sending send_randomhash to bob");
         this.outMsgBob.println("[1] " + this.randomHashAliceOriginal);
     }
 

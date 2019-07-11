@@ -46,7 +46,7 @@ public class WonProtocolE2ETest {
     @Test
     public void sign_randomHash() throws NoSuchAlgorithmException {
         String randomHashAlice = HashUtils.generateRandomHash();
-        LOG.info("original hash bytes " + randomHashAlice.getBytes());
+        LOG.info("original send_randomhash bytes " + randomHashAlice.getBytes());
 
         byte[] blinded = this.blindSigner.blindAndSign(randomHashAlice.getBytes(StandardCharsets.UTF_8));
         LOG.info(randomHashAlice + " blinded to " + blinded);
@@ -59,7 +59,7 @@ public class WonProtocolE2ETest {
     public void sign_randomHash_failVerify() throws NoSuchAlgorithmException {
         String randomHashAlice = HashUtils.generateRandomHash();
         String otherHashAlice = HashUtils.generateRandomHash();
-        LOG.info("original hash bytes" + randomHashAlice.getBytes());
+        LOG.info("original send_randomhash bytes" + randomHashAlice.getBytes());
 
         byte[] blinded = this.blindSigner.blindAndSign(randomHashAlice.getBytes());
         LOG.info(randomHashAlice + " blinded to " + blinded);
@@ -89,23 +89,23 @@ public class WonProtocolE2ETest {
         String sr = this.s.createRandomHash();  // random of Supplier
         this.r.exchangeHash(sr);                // send it to the requestor
 
-        byte[] sigR = this.r.signHash();        // requestor signs supplier hash
-        byte[] sigS = this.s.signHash();        // supplier signs requestor hash
+        byte[] sigR = this.r.signHash();        // requestor signs supplier send_randomhash
+        byte[] sigS = this.s.signHash();        // supplier signs requestor send_randomhash
 
         assertTrue(this.r.verifySignature(sigS, rr, certS));
         assertTrue(this.s.verifySignature(sigR, sr, certR));
 
-        Reputationtoken RTr = this.r.createReputationToken(certR, sigR);  // requestor creates Rep token with own cert and the signed hash from supplier
+        Reputationtoken RTr = this.r.createReputationToken(certR, sigR);  // requestor creates Rep token with own cert and the signed send_randomhash from supplier
         byte[] blindRTr = this.blindSigner.blindAndSign(RTr.getBytes());
 
-        Reputationtoken RTs = this.s.createReputationToken(certS, sigS);  // supplier creates Rep token with own cert and the signed hash from requestor
+        Reputationtoken RTs = this.s.createReputationToken(certS, sigS);  // supplier creates Rep token with own cert and the signed send_randomhash from requestor
         byte[] blindRTs = this.blindSigner.blindAndSign(RTs.getBytes());
 
         this.r.exchangeReputationToken(RTr);
         this.s.exchangeReputationToken(RTs);
 
         // TODO interact with SP to get a blindsignature (RSA) of {certR, sigR(sr)}
-        // check signature of RT, cert and hash ... provide original number from the other user
+        // check signature of RT, cert and send_randomhash ... provide original number from the other user
         assertTrue(this.blindSigner.verify(blindRTr, RTr.getBytes())); // check Rep token from Requestor with original Hash
         assertTrue(this.blindSigner.verify(blindRTs, RTs.getBytes())); // check Rep token from Supplier with original Hash
     }

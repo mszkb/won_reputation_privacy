@@ -50,18 +50,18 @@ Your message has to begin with
 Message types are defined in docs/reputation.ttl as rep\:subClassOf rep\:Message
   
 **Alice, Bob, Charlie, Carol basic protocol commands:**  
-genrandomhash  
-exchangehash \<HASH>  
-verifyhashsignature  \<HASH from genrandomhash>
-blindreputationtokenmsg (just to get the WON-Message)  
-createexchangetokenmsg <BLINDED TOKEN>  
-rateuser \<RATING in float> \<MESSAGE String> \<ENCODED reputation token> \<ENCODED blinded token>  
-  
+send_randomhash  
+receive_hash \<hash from other user>  
+send_token_sp  
+receive_blindtoken_sp \<blindtoken>  
+send_token_user \<token> \<blindtoken>  
+receive_token_user \<token other user> \<blindtoken other user>  
+rate_user \<rating> \<comment> \<token other user> \<blindtoken other user>  
+            
 **SP protocol:**  
-blindsigntoken \<ENCODED reputation token>  
-verify \<ENCODED blinded token> \<ENCODED reputation token>  
-rateuser \<RATING in float> \<MESSAGE String> \<ENCODED reputation token> \<ENCODED blinded token> \<ORIGINAL hash from genrandomhash>  
-  
+blindsigntoken \<token>  
+rate \<rating> \<comment> \<token other user> \<blindtoken other user> \<original_hash>  
+       
 The Tool is supposed to act like a real implementation - so you do not have to copy and paste every single
 parameter. All parameters that are used before are stored into fields in the CLI object.  
 

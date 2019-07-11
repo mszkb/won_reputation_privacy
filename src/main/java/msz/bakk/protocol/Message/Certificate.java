@@ -16,6 +16,11 @@ public class Certificate implements Message {
         this.signature = signature;
     }
 
+    public Certificate(PublicKey publicKey, int ID) {
+        this.publicKey = publicKey;
+        this.ID = ID;
+    }
+
     public int getID() {
         return this.ID;
     }

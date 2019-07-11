@@ -139,7 +139,7 @@ public class Signer implements ACL {
 
         // TODO verify blind signature of token
 
-        // TODO check if random hash is not already used before
+        // TODO check if random send_randomhash is not already used before
 
         boolean verifyHashBool;
         boolean verifyCertBool;
@@ -151,7 +151,7 @@ public class Signer implements ACL {
         byte[] randomHashOriginal = randomNumberOfHash.getBytes(StandardCharsets.UTF_8);
         byte[] randomHashSigToCheck = reputationtoken.getSignatureOfHash();
 
-        // Check if the signature of the hash is correct
+        // Check if the signature of the send_randomhash is correct
         Signature verifyHash = Signature.getInstance("SHA256withECDSA", "SunEC");
         verifyHash.initVerify(publicKeyOfCert);
         verifyHash.update(randomHashOriginal);

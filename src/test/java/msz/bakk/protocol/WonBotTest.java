@@ -28,10 +28,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * The client wants to rate another client. That's whats going on:
  *
  * 1) client generates a random number, hashes it and sends it to the bot
- * 2) the bot sends the hash to another bot and recieves a hashed random number from the other bot
- * 3) the bot signs the hash
- * 4) the bot sends the signed hash and the cerificate of the user to the RepuationServer
- * 5) the reputationserver creates a blind signature of the signed hash and the certificate and sends back to the bot
+ * 2) the bot sends the send_randomhash to another bot and recieves a hashed random number from the other bot
+ * 3) the bot signs the send_randomhash
+ * 4) the bot sends the signed send_randomhash and the cerificate of the user to the RepuationServer
+ * 5) the reputationserver creates a blind signature of the signed send_randomhash and the certificate and sends back to the bot
  * 6) the bot sends the blind signature to the other bot and recieves a blind signature
  * 7) the bot verifies with the repuationserver if the recieved siganture is valid
  */
@@ -141,7 +141,7 @@ public class WonBotTest extends TestBase {
         this.bobThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
-        // Alice is our Test-method, we begin to send Bob our random hash
+        // Alice is our Test-method, we begin to send Bob our random send_randomhash
         String randomHashAlice = HashUtils.generateRandomHash();
 
         WrappedSocket alice = new WrappedSocket("localhost", bobPort, true);
@@ -189,7 +189,7 @@ public class WonBotTest extends TestBase {
         this.bobThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
-        // Alice is our Test-method, we begin to send Bob our random hash
+        // Alice is our Test-method, we begin to send Bob our random send_randomhash
 
         String randomHashAlice = HashUtils.generateRandomHash();
 
@@ -234,7 +234,7 @@ public class WonBotTest extends TestBase {
         String randomHashBob = HashUtils.generateRandomHash();
         bot2in.addLine("[1] " + randomHashBob);
 
-        // We sign the randomhash, create a RT and let the SP blind it
+        // We sign the send_randomhash, create a RT and let the SP blind it
         byte[] signedHashAlice          = RSAUtils.signString(bobKeyPair, randomHashFromAlice);
         Reputationtoken tokenForAlice   = new Reputationtoken(certBob,  signedHashAlice);
         String encodedTokenForAlice     = MessageUtils.toString(tokenForAlice);
@@ -277,16 +277,16 @@ public class WonBotTest extends TestBase {
         aliceXThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
 
-        LOG.info("Client of Alice: we sign the hash from the BOT");
+        LOG.info("Client of Alice: we sign the send_randomhash from the BOT");
         String randomHashBob = bot2out.listen().split(" ")[1];
         byte[] signedHashBob = RSAUtils.signString(aliceKeyPair, randomHashBob);
-        LOG.info("Client of Alice: hash is signed, we send it back");
+        LOG.info("Client of Alice: send_randomhash is signed, we send it back");
         bot2in.addLine("[1] " + MessageUtils.encodeBytes(signedHashBob));
 
-        LOG.info("Client of Bob: we sign the hash from the BOT");
+        LOG.info("Client of Bob: we sign the send_randomhash from the BOT");
         String randomHashAlice = bot1out.listen().split(" ")[1];
         byte[] signedHashAlice = RSAUtils.signString(bobKeyPair, randomHashAlice);
-        LOG.info("Client of Bob: hash is signed, we send it back");
+        LOG.info("Client of Bob: send_randomhash is signed, we send it back");
         bot1in.addLine("[2] " + MessageUtils.encodeBytes(signedHashAlice));
 
         assertThat(bot1out.listen(), is("everything is ok"));
