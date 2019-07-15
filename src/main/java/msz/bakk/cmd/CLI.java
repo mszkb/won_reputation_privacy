@@ -12,13 +12,12 @@ import msz.bakk.protocol.Utils.MessageUtils;
 import msz.bakk.protocol.Utils.RSAUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.jena.query.Dataset;
+import org.apache.jena.rdf.model.Model;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
 import won.protocol.message.WonMessage;
-import won.protocol.util.RdfUtils;
 
 import java.io.IOException;
 import java.security.*;
@@ -34,20 +33,27 @@ public class CLI {
     private boolean sp = false;
 
     private KeyPair keyPair = ECUtils.generateKeyPair();
-    private String myRandomHash;
+    private String myRandomHash = "";
     private byte[] signedHash;
     private Params params;
     private BlindSignature blindSigner;
     private Signer serviceProvider;
+
     private Certificate myCertificate;
     private Reputationtoken myReputationToken;
+    private String myBlindedToken;
+
+    private String otherHash;
+    private Reputationtoken otherReputationToken;
+    private String otherEncodedReputationToken;
+    private String otherBlindedToken;
+
     private WonMessage reputationTokenMSG;
     private WonMessage blindAnswer;
     private WonMessage rateMsg;
 
     private HashMap<String, String> usedTokens;
     private HashMap<Integer, List<Reputation>> ratingStore;
-    private String blindedToken;
 
     public CLI() {
         if(CmdApplication.shellprefix.equals("SP")) {
@@ -65,8 +71,25 @@ public class CLI {
             LOG.info("rate <rating> <comment> <token other user> <blindtoken other user> <original_hash>");
             LOG.info("-----------------------------------------------------------------------");
         } else {
-            // TODO what is the User ID in WoN?
-            this.myCertificate = new Certificate(this.keyPair.getPublic(), 1);
+            // To create your own certificate:
+            // - remove this.myCertificate = new Certificate...
+            // - type on Alice/Bob side:
+            //     publickey
+            //     Copy the public key
+            //
+            // - type on SP side:
+            //     generatecertificate <public key>
+            //     Copy that cert
+            //
+            // - type on Alice/Bob side:
+            //      addcertificate <cert>
+
+            // IDs are hardcoded as Program argument for simplification
+            int userId = CmdApplication.shellprefix.equals("Alice") == true ? 1 : 1;
+            userId = CmdApplication.shellprefix.equals("Bob") == true ? 2 : userId;
+            userId = CmdApplication.shellprefix.equals("Carol") == true ? 3 : userId;
+            userId = CmdApplication.shellprefix.equals("Charlie") == true ? 4 : userId;
+            this.myCertificate = new Certificate(this.keyPair.getPublic(), userId);
 
             LOG.info("-----------------------------------------------------------------------");
             LOG.info("You are " + CmdApplication.shellprefix);
@@ -127,6 +150,25 @@ public class CLI {
         return encodedCert;
     }
 
+    // Helper
+    public String getEncodedReputationToken() {
+        try {
+            return MessageUtils.toString(this.myReputationToken);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return "";
+    }
+
+    public String getMyRandomHash() {
+        return this.myRandomHash;
+    }
+
+    public String getMyBlindedToken() {
+        return this.myBlindedToken;
+    }
+
     @ShellMethod(value = "Shows the public key of current instance")
     public String publickey() throws IOException {
         return MessageUtils.toString(this.keyPair.getPublic());
@@ -154,38 +196,44 @@ public class CLI {
     ///----------------------------------------------------------------
 
     @ShellMethod(value = "Blind and sign given token")
-    public String blindsigntoken(String encodedToken) {
+    public WonMessage blindsigntoken(String encodedToken) {
         if(!this.sp) {
-            LOG.error("Only SP is allowed");
-            return encodedToken;
+            LOG.error("Only SP is allowed to use this method");
+            return null;
         }
 
-        Reputationtoken reputationtoken = MessageUtils.decodeRT(encodedToken);
-        String blindSignature = MessageUtils.encodeBytes(this.blindSigner.blindAndSign(reputationtoken.getBytes()));
-
-        WonMessage msg = RDFMessages.blindAnswer(reputationtoken, blindSignature);
+        String blindSignature = blindsigntoken_helper(encodedToken);
+        WonMessage msg = RDFMessages.createWonMessage(RDFMessages.blindAnswer(MessageUtils.decodeRT(encodedToken), blindSignature));
         RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
         LOG.info("We created the blind signature of your reputation token");
         LOG.info("Copy the the encoded String into the client side to rate the person");
         LOG.info(blindSignature);
-        return blindSignature;
+
+        return msg;
     }
 
-    public String verify(String blindedToken, String encodedToken) {
+    /**
+     * Helper method
+     * for tests - it is also used by the proper method
+     */
+    public String blindsigntoken_helper(String encodedToken) {
+        Reputationtoken reputationtoken = MessageUtils.decodeRT(encodedToken);
+        return MessageUtils.encodeBytes(this.blindSigner.blindAndSign(reputationtoken.getBytes()));
+    }
+
+    /**
+     * Helper method
+     * for tests - to quickly check blind token and original token
+     */
+    public boolean verify(String blindedToken, String encodedToken) {
         if(!this.sp) {
             LOG.error("Only SP is allowed");
-            return "";
+            return false;
         }
-
+        LOG.info("Verify blinded token with original token");
         Reputationtoken reputationtoken = MessageUtils.decodeRT(encodedToken);
-        boolean verify = this.blindSigner.verify(MessageUtils.decodeToBytes(blindedToken), reputationtoken.getBytes());
-
-        if(verify) {
-            return "Blinded token valid";
-        } else {
-            return "Blinded token invalid";
-        }
+        return this.blindSigner.verify(MessageUtils.decodeToBytes(blindedToken), reputationtoken.getBytes());
     }
 
     @ShellMethod(value = "rates user")
@@ -271,25 +319,28 @@ public class CLI {
     ///----------------------------------------------------------------
 
     @ShellMethod(value = "Generate a random send_randomhash and outputs a complete WoN RDF Message")
-    public String send_randomhash() {
+    public WonMessage send_randomhash() {
         if(this.sp) {
             LOG.error("SP is not allowed to execute this function");
             return null;
         }
 
-        WonMessage msg = RDFMessages.generateRandomHash();
-        Dataset content = msg.getMessageContent();
-        String datasetString = RdfUtils.writeDatasetToString(content, Lang.TRIG);
+        try {
+            this.myRandomHash = Utils.generateRandomHash();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+
+        Model m = RDFMessages.generateRandomHash(this.myRandomHash);
+        WonMessage msg = RDFMessages.createWonMessage(m);
         RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
-        String[] split = datasetString.split("\n");     // ugly spliting
-        this.myRandomHash = split[2].trim().split("\"")[1];   // Random Hash        System.out.println("\nGenerated random send_randomhash - exchange this with the other person");
-        LOG.info("\nThis is your send_randomhash - exchange this with your Atom partner");
-        LOG.info("COPY THIS - paste it into 'receive_hash <HASH>' at other User side");
-        return this.myRandomHash;
+        return msg;
     }
 
-    @ShellMethod(value = "Send random Hash to the other person - there is no return message")
+    // Helper methods do not create a WoN Message
+    // Those methods are primarly used to save variables
+    @ShellMethod(value = "HELPER - receive hash from other person, sign and save it")
     public void receive_hash(String hash) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, IOException, NoSuchProviderException {
         if(this.sp) {
             LOG.error("SP is not allowed to execute this function");
@@ -309,6 +360,7 @@ public class CLI {
 
         LOG.info("Recieving send_randomhash from other user");
         LOG.info("Signing the send_randomhash from other user");
+        this.otherHash = hash;
         this.signedHash = RSAUtils.signString(this.keyPair, hash);
         LOG.info("Creating Reputationtoken");
 
@@ -321,69 +373,98 @@ public class CLI {
         }
     }
 
-    @ShellMethod(value = "verifies given original send_randomhash with the signed one")
-    public boolean verify_hash(String originalHash) throws IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-        return RSAUtils.verifySignature(this.signedHash, originalHash, this.myCertificate.getPublicKey());
+    // Helper methods do not create a WoN Message
+    // Those methods are primarly used to save variables
+    @ShellMethod(value = "HELPER - we verify the hash")
+    public boolean verify_hash() throws IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        if(this.signedHash == null) {
+            LOG.info("No Hash recieved yet");
+            LOG.info("Generate hash on other user and do 'receive_hash <HASH>' here");
+        }
+
+        return RSAUtils.verifySignature(this.signedHash, this.otherHash, this.myCertificate.getPublicKey());
     }
 
     @ShellMethod(value = "Send reputation token to the SP, SP returns the blinded token along with the original one")
-    public String send_token_sp() throws NoSuchProviderException, NoSuchAlgorithmException, IOException {
+    public WonMessage send_token_sp() throws NoSuchProviderException, NoSuchAlgorithmException, IOException {
         if(this.sp) {
             LOG.error("SP is not allowed to execute this function");
-            return "";
+            return null;
         }
 
+        if(this.signedHash == null) {
+            LOG.info("No Hash recieved yet");
+            LOG.info("Generate hash on other user and do 'receive_hash <HASH>' here");
+        }
+
+        Model m = RDFMessages.createReputationToken(MessageUtils.encodeBytes(this.signedHash), this.myCertificate);
+
         this.myReputationToken = new Reputationtoken(this.myCertificate, this.signedHash);
-        this.reputationTokenMSG = RDFMessages.createReputationToken(MessageUtils.encodeBytes(this.signedHash), this.myCertificate);
-        RDFDataMgr.write(System.out, this.reputationTokenMSG.getMessageContent(), Lang.TRIG);
+        WonMessage msg = RDFMessages.createWonMessage(m);
+        RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
         LOG.info("We want to blind sign our reputation token");
         LOG.info("We print out a base64 encoded reputation token");
+        LOG.info(MessageUtils.toString(this.myReputationToken));
         LOG.info("Next step: Send token to SP .. blindandsign <myReputationToken>");
         LOG.info("COPY THIS - into 'blindsigntoken <TOKEN>' at SP side");
-        return MessageUtils.toString(this.myReputationToken);
+
+        return msg;
     }
 
-    @ShellMethod(value = "Recieve token from SP and store it")
+    // Helper methods do not create a WoN Message
+    // Those methods are primarly used to save variables
+    @ShellMethod(value = "HELPER - Recieve token from SP and store it")
     public void receive_blindtoken_sp(String blindedtoken) {
         if(this.sp) {
             LOG.error("SP is not allowed to execute this function");
             return;
         }
 
-        this.blindedToken = blindedtoken;
+        this.myBlindedToken = blindedtoken;
     }
 
     @ShellMethod(value = "We exchange the reputation token - so the other is authorized to rate us")
-    public String[] send_token_user() throws IOException {
+    public WonMessage send_token_user() throws IOException {
         // Create message to exchange the token
         if(this.sp) {
             LOG.error("SP is not allowed to execute this function");
         }
 
-        this.blindAnswer = RDFMessages.blindAnswer(this.myReputationToken, this.blindedToken);
-        RDFDataMgr.write(System.out, this.blindAnswer.getMessageContent(), Lang.TRIG);
+        Model m = RDFMessages.blindAnswer(this.myReputationToken, this.myBlindedToken);
+        WonMessage msg = RDFMessages.createWonMessage(m);
+
+        RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
         LOG.info("This is the message to exchange the reputation token");
         LOG.info("It contains the token and the blind signature");
 
-        String[] tokens = {MessageUtils.toString(this.myReputationToken), this.blindedToken};
-
         LOG.info("COPY THOSE 2 ... original and blinded token - into 'rate_user 5.0 aaa <token> <blindtoken>' at other Users");
         LOG.info(MessageUtils.toString(this.myReputationToken));
-        LOG.info(this.blindedToken);
+        LOG.info(this.myBlindedToken);
 
-        return tokens;
+        return msg;
+    }
+
+    // Helper methods do not create a WoN Message
+    // Those methods are primarly used to save variables
+    @ShellMethod(value = "HELPER - receive the reputation token and blinded token from the other user")
+    public void receive_token_user(String encodededToken, String blindedToken) {
+        if(this.sp) {
+            LOG.error("SP is not allowed to execute this function");
+        }
+
+        this.otherReputationToken = MessageUtils.decodeRT(encodededToken);
+        this.otherEncodedReputationToken = encodededToken;
+        this.otherBlindedToken = blindedToken;
     }
 
     @ShellMethod(value = "Check blind signature of the token (SP)")
-    public void rate_user(float rating, String message, String encodedReputationToken, String blindedReputationToken) {
+    public WonMessage rate_user(float rating, String message) {
         if(this.sp) {
             LOG.error("only SP is allowed to execute this function");
-            return;
+            return null;
         }
-
-        Reputationtoken reputationtoken = MessageUtils.decodeRT(encodedReputationToken);
 
         // The message to rate a user contains:
         // - rating
@@ -394,13 +475,12 @@ public class CLI {
         LOG.info("COPY THOSE 5 ... - into 'rate 5.0 aaa <token> <blindtoken> <original hash>' at SP");
         LOG.info(5.0f);
         LOG.info("ABC MESSAGE");
-        LOG.info(encodedReputationToken);
-        LOG.info(this.blindedToken);
-        LOG.info(this.myRandomHash);
-        this.rateMsg = RDFMessages.rate(rating, message, reputationtoken, blindedReputationToken, this.myRandomHash);
+        WonMessage rateMsg = RDFMessages.createWonMessage(
+                RDFMessages.rate(rating, message, this.otherReputationToken, this.otherBlindedToken, this.myRandomHash));
 
-        RDFDataMgr.write(System.out, this.rateMsg.getMessageContent(), Lang.TRIG);
+        RDFDataMgr.write(System.out, rateMsg.getMessageContent(), Lang.TRIG);
 
         LOG.info("This a message which recieves the SP");
+        return rateMsg;
     }
 }
