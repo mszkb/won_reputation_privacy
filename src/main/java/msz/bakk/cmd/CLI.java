@@ -406,11 +406,9 @@ public class CLI {
         WonMessage msg = RDFMessages.createWonMessage(m);
         RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
-        LOG.info("We want to blind sign our reputation token");
-        LOG.info("We print out a base64 encoded reputation token");
+        LOG.info("COPY next line into 'blindsigntoken <token>' other SP CLI Tool");
         LOG.info(MessageUtils.toString(this.myReputationToken));
-        LOG.info("Next step: Send token to SP .. blindandsign <myReputationToken>");
-        LOG.info("COPY THIS - into 'blindsigntoken <TOKEN>' at SP side");
+
 
         return msg;
     }
@@ -442,8 +440,11 @@ public class CLI {
         LOG.info("This is the message to exchange the reputation token");
         LOG.info("It contains the token and the blind signature");
 
-        LOG.info("COPY THOSE 2 ... original and blinded token - into 'rate_user 5.0 aaa <token> <blindtoken>' at other Users");
+
+        LOG.info("COPY next two lines into 'receive_token_user <reputation token> <blindtoken>' other SP CLI Tool");
+        LOG.info("Reputationtoken:");
         LOG.info(MessageUtils.toString(this.myReputationToken));
+        LOG.info("Blinded reputation token:");
         LOG.info(this.myBlindedToken);
 
         return msg;
@@ -463,7 +464,7 @@ public class CLI {
     }
 
     @ShellMethod(value = "Check blind signature of the token (SP)")
-    public WonMessage rate_user(float rating, String message) {
+    public WonMessage rate_user(float rating, String message) throws IOException {
         if(this.sp) {
             LOG.error("only SP is allowed to execute this function");
             return null;
@@ -475,15 +476,23 @@ public class CLI {
         // - reputationtoken
         // - blindedtoken
         // - original send_randomhash (to verify the signature of the random)
-        LOG.info("COPY THOSE 5 ... - into 'rate 5.0 aaa <token> <blindtoken> <original hash>' at SP");
-        LOG.info(5.0f);
-        LOG.info("ABC MESSAGE");
         WonMessage rateMsg = RDFMessages.createWonMessage(
                 RDFMessages.rate(rating, message, this.otherReputationToken, this.otherBlindedToken, this.myRandomHash));
 
         RDFDataMgr.write(System.out, rateMsg.getMessageContent(), Lang.TRIG);
 
-        LOG.info("This a message which recieves the SP");
+        LOG.info("COPY next 5 lines into 'receive_token_user <reputation token> <blindtoken>' other SP CLI Tool");
+        LOG.info("Rating");
+        LOG.info(rating);
+        LOG.info("Comment");
+        LOG.info(message);
+        LOG.info("Reputationtoken:");
+        LOG.info(MessageUtils.toString(this.otherReputationToken));
+        LOG.info("Blinded reputation token:");
+        LOG.info(this.otherBlindedToken);
+        LOG.info("Original random hash");
+        LOG.info(this.myRandomHash);
+
         return rateMsg;
     }
 }

@@ -54,7 +54,11 @@ blindsigntoken \<base64 encoded Token from Alice> (Copy base64 blindsignature)
 Alice:  
 receive_blindtoken_sp \<base64 encoded blindsignature>  
 send_token_user (Copy two Strings into Bobs CLI Tool)  
+receive_token_user \<encoded reputation token from Bob> \<blindtoken from Bob>  
 rate_user \<float 0-5> \<Comment as String> \<encoded normal token> \<blind token>  
+  
+SP:  
+rate \<float 0-5> \<Comment as String> \<encoded normal token> \<blinded token> \<original random hash>
   
 Bob:  
 receive_hash \<hash from alice>  
@@ -66,8 +70,12 @@ blindsigntoken \<base64 encoded Token from Bob> (Copy base64 blindsignature)
 Bob:  
 receive_blindtoken_sp \<base64 encoded blindsignature>  
 send_token_user (Copy two Strings into Alice CLI Tool)  
+receive_token_user \<encoded reputation token from Alice> \<blindtoken from Alice>  
 rate_user \<float 0-5> \<Comment as String> \<encoded normal token> \<blind token>  
   
+SP:  
+rate \<float 0-5> \<Comment as String> \<encoded normal token> \<blinded token> \<original random hash>
+    
 
 ## Tests
 
