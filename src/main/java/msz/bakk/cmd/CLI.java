@@ -335,6 +335,9 @@ public class CLI {
         WonMessage msg = RDFMessages.createWonMessage(m);
         RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
+        LOG.info("COPY next line into 'receive_hash <hash>' other users CLI Tool");
+        LOG.info(this.myRandomHash);
+
         return msg;
     }
 

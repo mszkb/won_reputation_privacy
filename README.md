@@ -15,8 +15,10 @@ testing easier. Helper methods are indicated with \*
 
 **Care:** For simplification we hardcoded the IDs. See docs/alice.png bob.png carol.png and carlie.png.  
 The IDs are tied to those program arguments in the images.  
-To change the IDs, go to CLI.java constructor.  
-
+To change the IDs, go to CLI.java constructor.    
+The CLI Tool also prints out the Strings which need to be copied to other
+instances of the CLI Tool. Which instance is described in the output.  
+  
 **Alice, Bob, Charlie, Carol basic protocol commands:**  
 send_randomhash  
 *receive_hash \<hash from other user>  
@@ -34,7 +36,38 @@ The Tool is supposed to act like a real implementation - so you do not have to c
 parameter. All parameters that are used before are stored into fields in the CLI object.  
 
 
+**Example between Alice, Bob and SP**:  
+  
+Alice:  
+send_randomhash (Copy Hash - printed out by LOG.info)  
+  
+Bob:  
+send_randomhash (Copy Hash)  
+  
+Alice:  
+receive_hash \<hash from bob>  
+send_token_sp (Copy base64 encoded Token)  
+  
+SP:  
+blindsigntoken \<base64 encoded Token from Alice> (Copy base64 blindsignature)  
+  
+Alice:  
+receive_blindtoken_sp \<base64 encoded blindsignature>  
+send_token_user (Copy two Strings into Bobs CLI Tool)  
+rate_user \<float 0-5> \<Comment as String> \<encoded normal token> \<blind token>  
+  
+Bob:  
+receive_hash \<hash from alice>  
+send_token_sp (Copy base64 encoded Token)    
 
+SP:  
+blindsigntoken \<base64 encoded Token from Bob> (Copy base64 blindsignature)  
+  
+Bob:  
+receive_blindtoken_sp \<base64 encoded blindsignature>  
+send_token_user (Copy two Strings into Alice CLI Tool)  
+rate_user \<float 0-5> \<Comment as String> \<encoded normal token> \<blind token>  
+  
 
 ## Tests
 
