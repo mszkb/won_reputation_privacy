@@ -10,14 +10,21 @@ import java.security.SecureRandom;
 
 public class Utils {
     public static String generateRandomHash() throws NoSuchAlgorithmException {
-        SecureRandom rnd = new SecureRandom();
-        String randomNumber = String.valueOf(rnd.nextInt(10000));
+        String randomNumber = Utils.generateRandomNumber();
+        return Utils.generateHash(randomNumber);
+    }
 
+    public static String generateHash(String random) throws NoSuchAlgorithmException {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         byte[] hash = digest.digest(
-                randomNumber.getBytes(StandardCharsets.UTF_8));
+                random.getBytes(StandardCharsets.UTF_8));
         String hashedRandomNumber = new String(Hex.encode(hash));
 
         return hashedRandomNumber;
+    }
+
+    public static String generateRandomNumber () {
+        SecureRandom rnd = new SecureRandom();
+        return String.valueOf(rnd.nextInt(10000));
     }
 }

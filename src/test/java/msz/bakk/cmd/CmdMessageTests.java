@@ -347,14 +347,14 @@ public class CmdMessageTests {
                 aliceRatesBobComment,
                 encodedTokenBobforAlice,
                 blindedTokenBobForAlice,
-                cliAlice.getMyRandomHash());
+                cliAlice.getMyRandom());
 
         cliSP.rate(
                 4.5f,
                 bobRatesAliceComment,
                 encodedTokenAliceforBob,
                 blindedTokenAliceForBob,
-                cliBob.getMyRandomHash());
+                cliBob.getMyRandom());
 
         assertThat(cliSP.showrating("1")).isEqualTo("4.5");
         assertThat(cliSP.showrating("2")).isEqualTo("5.0");
@@ -395,21 +395,21 @@ public class CmdMessageTests {
                 "Nice and smooth transaction",
                 encodedTokenBobforAlice,
                 blindedTokenBobForAlice,
-                cliAlice.getMyRandomHash());
+                cliAlice.getMyRandom());
 
         cliSP.rate(
                 4.5f,
                 "Nice and quick",
                 encodedTokenAliceforBob,
                 blindedTokenAliceForBob,
-                cliBob.getMyRandomHash());
+                cliBob.getMyRandom());
 
         assertThat(cliSP.rate(
                 4.0f,
                 "I rated Bob twice",
                 encodedTokenBobforAlice,
                 blindedTokenBobForAlice,
-                cliAlice.getMyRandomHash())).contains("FAILED");
+                cliAlice.getMyRandom())).contains("FAILED");
 
         assertThat(cliSP.showrating("2")).isEqualTo("5.0");
     }
@@ -459,6 +459,6 @@ public class CmdMessageTests {
                 "Nice and smooth transaction",
                 encodedTokenAliceforBob,
                 blindedTokenAliceForBob,
-                cliAlice.getMyRandomHash())).contains("FAILED");
+                cliAlice.getMyRandom())).contains("FAILED");
     }
 }

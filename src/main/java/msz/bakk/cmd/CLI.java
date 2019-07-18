@@ -54,6 +54,7 @@ public class CLI {
 
     private HashMap<String, String> usedTokens;
     private HashMap<Integer, List<Reputation>> ratingStore;
+    private String myRandom;
 
     public CLI() {
         if(CmdApplication.shellprefix.equals("SP")) {
@@ -165,6 +166,10 @@ public class CLI {
         return this.myRandomHash;
     }
 
+    public String getMyRandom() {
+        return this.myRandom;
+    }
+
     public String getMyBlindedToken() {
         return this.myBlindedToken;
     }
@@ -237,7 +242,7 @@ public class CLI {
     }
 
     @ShellMethod(value = "rates user")
-    public String rate(float rating, String message, String encodedToken, String encodedBlindToken, String originalhash) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+    public String rate(float rating, String message, String encodedToken, String encodedBlindToken, String original) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         if(!this.sp) {
             LOG.error("Only SP is allowed");
             return "FAILED";
@@ -256,7 +261,7 @@ public class CLI {
             return "FAILED - blindedtoken verification failed";
         }
 
-        if(!RSAUtils.verifySignature(reputationtoken.getSignatureOfHash(), originalhash, reputationtoken.getPubkeyFromCert())) {
+        if(!RSAUtils.verifySignature(reputationtoken.getSignatureOfHash(), Utils.generateHash(original), reputationtoken.getPubkeyFromCert())) {
             LOG.error("HASH VERIFICATION FAILED");
             return "FAILED - send_randomhash signature verification failed";
         }
@@ -273,7 +278,7 @@ public class CLI {
             this.ratingStore.put(userId, newList);
         }
 
-        usedTokens.put(encodedBlindToken, originalhash);
+        usedTokens.put(encodedBlindToken, original);
 
         LOG.info("OK");
         return "OK";
@@ -326,7 +331,8 @@ public class CLI {
         }
 
         try {
-            this.myRandomHash = Utils.generateRandomHash();
+            this.myRandom = Utils.generateRandomNumber();
+            this.myRandomHash = Utils.generateHash(this.myRandom);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
@@ -475,9 +481,9 @@ public class CLI {
         // - comment
         // - reputationtoken
         // - blindedtoken
-        // - original send_randomhash (to verify the signature of the random)
+        // - original random number (to verify the signature of the random hash)
         WonMessage rateMsg = RDFMessages.createWonMessage(
-                RDFMessages.rate(rating, message, this.otherReputationToken, this.otherBlindedToken, this.myRandomHash));
+                RDFMessages.rate(rating, message, this.otherReputationToken, this.otherBlindedToken, this.myRandom));
 
         RDFDataMgr.write(System.out, rateMsg.getMessageContent(), Lang.TRIG);
 
@@ -490,8 +496,8 @@ public class CLI {
         LOG.info(MessageUtils.toString(this.otherReputationToken));
         LOG.info("Blinded reputation token:");
         LOG.info(this.otherBlindedToken);
-        LOG.info("Original random hash");
-        LOG.info(this.myRandomHash);
+        LOG.info("Original random Number");
+        LOG.info(this.myRandom);
 
         return rateMsg;
     }
