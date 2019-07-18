@@ -11,9 +11,14 @@ import org.apache.jena.rdf.model.Resource;
 import won.protocol.message.WonMessage;
 import won.protocol.message.WonMessageBuilder;
 import won.protocol.util.RdfUtils;
+import won.protocol.vocabulary.CERT;
+import won.protocol.vocabulary.WON;
 
+import java.math.BigInteger;
 import java.net.URI;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.interfaces.ECPublicKey;
 
 public class RDFMessages {
 
@@ -49,6 +54,26 @@ public class RDFMessages {
         return model;
     }
 
+    public static Resource createCertificateResource(Certificate cert, Model model) {
+        ECPublicKey key = (ECPublicKey) cert.getPublicKey();
+        BigInteger x = key.getW().getAffineX();
+        BigInteger y  = key.getW().getAffineY();
+
+        Resource eccpublickey = model.createResource();
+        eccpublickey.addProperty(WON.ecc_algorithm, "EC");
+        eccpublickey.addProperty(WON.ecc_curveId, "secp348r1");
+        eccpublickey.addProperty(WON.ecc_qx, String.valueOf(x));
+        eccpublickey.addProperty(WON.ecc_qy, String.valueOf(y));
+
+        Resource publicKey = model.createResource();
+        publicKey.addProperty(CERT.PUBLIC_KEY, eccpublickey);
+
+        Resource certificate = model.createResource();
+        certificate.addProperty(CERT.KEY, publicKey);
+
+        return certificate;
+    }
+
     public static Model createReputationToken(String signedHash, Certificate cert) {
         // TODO Public key wie im WoN
 
@@ -56,7 +81,7 @@ public class RDFMessages {
         // new random send_randomhash
         Model model = WonRepRdfUtils.createBaseModel();
         Resource baseRes = RdfUtils.findOrCreateBaseResource(model);
-        Resource certificate = model.createResource();
+        Resource certificate = createCertificateResource(cert, model);
         certificate.addProperty(REP.USER_ID, String.valueOf(cert.getID()));
         certificate.addProperty(REP.PUBLIC_KEY, cert.getPublicKey().toString());
         Resource reputationToken = model.createResource();
@@ -71,7 +96,7 @@ public class RDFMessages {
     public static Model blindAnswer(Reputationtoken RT, String blindSignature) {
         Model model = WonRepRdfUtils.createBaseModel();
         Resource baseRes = RdfUtils.findOrCreateBaseResource(model);
-        Resource certificate = model.createResource();
+        Resource certificate = createCertificateResource(RT.getCertificate(), model);
         certificate.addProperty(REP.USER_ID, String.valueOf(RT.getCertificate().getID()));
         certificate.addProperty(REP.PUBLIC_KEY, RT.getCertificate().getPublicKey().toString());
         Resource reputationToken = model.createResource();
@@ -87,7 +112,7 @@ public class RDFMessages {
     public static Model rate(float rating, String message, Reputationtoken RT, String blindSignature, String originalHash) {
         Model model = WonRepRdfUtils.createBaseModel();
         Resource baseRes = RdfUtils.findOrCreateBaseResource(model);
-        Resource certificate = model.createResource();
+        Resource certificate = createCertificateResource(RT.getCertificate(), model);
         certificate.addProperty(REP.USER_ID, String.valueOf(RT.getCertificate().getID()));
         certificate.addProperty(REP.PUBLIC_KEY, RT.getCertificate().getPublicKey().toString());
         Resource reputationToken = model.createResource();

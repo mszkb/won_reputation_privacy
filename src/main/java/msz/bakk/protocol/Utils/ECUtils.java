@@ -60,7 +60,7 @@ public class ECUtils {
 
         try {
             kpg = KeyPairGenerator.getInstance("EC", "SunEC");
-            ECGenParameterSpec ecsp = new ECGenParameterSpec("secp192r1");
+            ECGenParameterSpec ecsp = new ECGenParameterSpec("secp384r1");
             kpg.initialize(ecsp);
 
             kp = kpg.generateKeyPair();
