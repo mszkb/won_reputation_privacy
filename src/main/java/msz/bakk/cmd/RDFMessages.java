@@ -8,6 +8,8 @@ import msz.bakk.protocol.vocabulary.REP;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.vocabulary.RDF;
 import won.protocol.message.WonMessage;
 import won.protocol.message.WonMessageBuilder;
 import won.protocol.util.RdfUtils;
@@ -54,39 +56,50 @@ public class RDFMessages {
         return model;
     }
 
-    public static Resource createCertificateResource(Certificate cert, Model model) {
-        ECPublicKey key = (ECPublicKey) cert.getPublicKey();
-        BigInteger x = key.getW().getAffineX();
-        BigInteger y  = key.getW().getAffineY();
+    public static Model createCertificateResource(Certificate cert, Model model, Resource keySubject) {
+        ECPublicKey publicKey = (ECPublicKey) cert.getPublicKey();
+        String x = publicKey.getW().getAffineX().toString(16);
+        String y  = publicKey.getW().getAffineY().toString(16);
 
-        Resource eccpublickey = model.createResource();
-        eccpublickey.addProperty(WON.ecc_algorithm, "EC");
-        eccpublickey.addProperty(WON.ecc_curveId, "secp348r1");
-        eccpublickey.addProperty(WON.ecc_qx, String.valueOf(x));
-        eccpublickey.addProperty(WON.ecc_qy, String.valueOf(y));
+        // EC public key triples
+        Resource bn = model.createResource();
+        Statement stmt = model.createStatement(bn, RDF.type, WON.ECCPublicKey);
+        model.add(stmt);
+        stmt = model.createStatement(bn, WON.ecc_algorithm, "EC");
+        model.add(stmt);
+        stmt = model.createStatement(bn, WON.ecc_curveId, "secp348r1");
+        model.add(stmt);
+        stmt = model.createStatement(bn, WON.ecc_qx, x);
+        model.add(stmt);
+        stmt = model.createStatement(bn, WON.ecc_qy, y);
+        model.add(stmt);
+        // public key triple
+        Resource bn2 = model.createResource();
+        stmt = model.createStatement(bn2, CERT.PUBLIC_KEY, bn);
+        model.add(stmt);
 
-        Resource publicKey = model.createResource();
-        publicKey.addProperty(CERT.PUBLIC_KEY, eccpublickey);
+        // backup certificate for our CLI Tool
+        Resource bn3 = model.createResource();
+        stmt = model.createStatement(bn3, REP.USER_ID, String.valueOf(cert.getID()));
+        model.add(stmt);
+        stmt = model.createStatement(bn3, REP.PUBLIC_KEY, cert.getPublicKey().toString());
+        model.add(stmt);
+        stmt = model.createStatement(keySubject, REP.CERTIFICATE, bn3);
+        model.add(stmt);
 
-        Resource certificate = model.createResource();
-        certificate.addProperty(CERT.KEY, publicKey);
+        // key triple
+        stmt = model.createStatement(keySubject, CERT.KEY, bn2);
+        model.add(stmt);
 
-        return certificate;
+        return model;
     }
 
     public static Model createReputationToken(String signedHash, Certificate cert) {
-        // TODO Public key wie im WoN
-
-        // provided random send_randomhash
-        // new random send_randomhash
         Model model = WonRepRdfUtils.createBaseModel();
         Resource baseRes = RdfUtils.findOrCreateBaseResource(model);
-        Resource certificate = createCertificateResource(cert, model);
-        certificate.addProperty(REP.USER_ID, String.valueOf(cert.getID()));
-        certificate.addProperty(REP.PUBLIC_KEY, cert.getPublicKey().toString());
         Resource reputationToken = model.createResource();
-        reputationToken.addProperty(REP.CERTIFICATE, certificate);
-        // TODO built in property exists?
+
+        createCertificateResource(cert, model, reputationToken);
         reputationToken.addProperty(REP.SIGNED_RANDOM_HASH, signedHash);
         baseRes.addProperty(REP.REPUTATIONTOKEN, reputationToken);
 
@@ -94,36 +107,25 @@ public class RDFMessages {
     }
 
     public static Model blindAnswer(Reputationtoken RT, String blindSignature) {
-        Model model = WonRepRdfUtils.createBaseModel();
+        Model model = createReputationToken(MessageUtils.encodeBytes(RT.getSignatureOfHash()), RT.getCertificate());
         Resource baseRes = RdfUtils.findOrCreateBaseResource(model);
-        Resource certificate = createCertificateResource(RT.getCertificate(), model);
-        certificate.addProperty(REP.USER_ID, String.valueOf(RT.getCertificate().getID()));
-        certificate.addProperty(REP.PUBLIC_KEY, RT.getCertificate().getPublicKey().toString());
-        Resource reputationToken = model.createResource();
-        reputationToken.addProperty(REP.CERTIFICATE, certificate);
-        // TODO built in property exists?
-        reputationToken.addProperty(REP.SIGNED_RANDOM_HASH, MessageUtils.encodeBytes(RT.getSignatureOfHash()));
-        baseRes.addProperty(REP.REPUTATIONTOKEN, reputationToken);
-        baseRes.addProperty(REP.BLIND_SIGNED_REPUTATIONTOKEN, blindSignature);
+
+        Statement stmt = model.createStatement(baseRes, REP.BLIND_SIGNED_REPUTATIONTOKEN, blindSignature);
+        model.add(stmt);
 
         return model;
     }
 
-    public static Model rate(float rating, String message, Reputationtoken RT, String blindSignature, String originalHash) {
-        Model model = WonRepRdfUtils.createBaseModel();
+    public static Model rate(float rating, String message, Reputationtoken RT, String blindSignature, String originalRandom) {
+        Model model = blindAnswer(RT, blindSignature);
         Resource baseRes = RdfUtils.findOrCreateBaseResource(model);
-        Resource certificate = createCertificateResource(RT.getCertificate(), model);
-        certificate.addProperty(REP.USER_ID, String.valueOf(RT.getCertificate().getID()));
-        certificate.addProperty(REP.PUBLIC_KEY, RT.getCertificate().getPublicKey().toString());
-        Resource reputationToken = model.createResource();
-        reputationToken.addProperty(REP.CERTIFICATE, certificate);
-        // TODO built in property exists?
-        reputationToken.addProperty(REP.SIGNED_RANDOM_HASH, MessageUtils.encodeBytes(RT.getSignatureOfHash()));
-        baseRes.addProperty(REP.REPUTATIONTOKEN, reputationToken);
-        baseRes.addProperty(REP.BLIND_SIGNED_REPUTATIONTOKEN, blindSignature);
-        baseRes.addProperty(REP.RATING, String.valueOf(rating));
-        baseRes.addProperty(REP.RATING_COMMENT, message);
-        baseRes.addProperty(REP.RANDOM_HASH, originalHash);
+
+        Statement stmt = model.createStatement(baseRes, REP.RATING, String.valueOf(rating));
+        model.add(stmt);
+        stmt = model.createStatement(baseRes, REP.RATING_COMMENT, message);
+        model.add(stmt);
+        stmt = model.createStatement(baseRes, REP.ORIGINAL, originalRandom);
+        model.add(stmt);
 
         return model;
     }

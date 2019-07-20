@@ -18,5 +18,7 @@ public class REP {
     public static final Property RATING_COMMENT = m.createProperty(BASE_URI + "ratingComment");
     public static final Property RANDOM_HASH = m.createProperty(BASE_URI + "RandomHash");
     public static final Property SIGNED_RANDOM_HASH = m.createProperty(BASE_URI + "signedRandomHash");
+    public static final Property ORIGINAL = m.createProperty(BASE_URI + "original");
+
     public static final Property VERIFICATION_STATE = m.createProperty(BASE_URI + "verificationState");
 }
