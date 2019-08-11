@@ -1,14 +1,16 @@
 import msz.bakk.protocol.Message.Certificate;
 import msz.bakk.protocol.Message.Reputationtoken;
-import msz.bakk.protocol.Signer.BlindSignature;
+import msz.bakk.protocol.Utils.BlindSignatureUtils;
 import msz.bakk.protocol.Signer.Signer;
 import msz.bakk.protocol.TrustedParty.Params;
 import msz.bakk.protocol.TrustedParty.TrustedParty;
 import msz.bakk.protocol.User.Requestor;
 import msz.bakk.protocol.User.Supplier;
 import msz.bakk.protocol.Utils.HashUtils;
+import msz.bakk.protocol.Utils.RSAUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,40 +34,49 @@ public class WonProtocolE2ETest {
     private Supplier s;
     private Params params;
     private Signer sp;
-    private BlindSignature blindSigner;
+    private BlindSignatureUtils blindSignerAlice;
+    private BlindSignatureUtils blindSignerBob;
 
     @Before
     public void createClients() throws NoSuchProviderException, NoSuchAlgorithmException {
         this.params = new TrustedParty().generateParams();
         this.r = new Requestor(this.params);
         this.s = new Supplier(this.params);
-        this.sp = new Signer(this.params);
-        this.blindSigner = new BlindSignature();
+        this.sp = new Signer();
+        this.blindSignerAlice = new BlindSignatureUtils((RSAKeyParameters) this.sp.getPublicSignatureKey());
+        this.blindSignerBob = new BlindSignatureUtils((RSAKeyParameters) this.sp.getPublicSignatureKey());
     }
 
     @Test
-    public void sign_randomHash() throws NoSuchAlgorithmException {
+    public void sign_randomHash() throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         String randomHashAlice = HashUtils.generateRandomHash();
         LOG.info("original send_randomhash bytes " + randomHashAlice.getBytes());
 
-        byte[] blinded = this.blindSigner.blindAndSign(randomHashAlice.getBytes(StandardCharsets.UTF_8));
+        byte[] blinded = this.blindSignerAlice.blindMessage(randomHashAlice.getBytes(StandardCharsets.UTF_8));
         LOG.info(randomHashAlice + " blinded to " + blinded);
+        byte[] blindSigned = this.sp.signBlindMessage(blinded);
+        byte[] unblindedSignature = this.blindSignerAlice.unblind(blindSigned);
 
         LOG.info("verify blinded: " + blinded + " with " + randomHashAlice);
-        assertTrue(this.blindSigner.verify(blinded, randomHashAlice.getBytes(StandardCharsets.UTF_8)));
+        assertTrue(this.blindSignerAlice.verify(unblindedSignature, randomHashAlice.getBytes(StandardCharsets.UTF_8), this.sp.getPublicSignatureKey()));
     }
 
     @Test
-    public void sign_randomHash_failVerify() throws NoSuchAlgorithmException {
+    public void sign_randomHash_failVerify() throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         String randomHashAlice = HashUtils.generateRandomHash();
         String otherHashAlice = HashUtils.generateRandomHash();
         LOG.info("original send_randomhash bytes" + randomHashAlice.getBytes());
 
-        byte[] blinded = this.blindSigner.blindAndSign(randomHashAlice.getBytes());
+        byte[] blinded = this.blindSignerAlice.blindMessage(randomHashAlice.getBytes());
         LOG.info(randomHashAlice + " blinded to " + blinded);
+        byte[] blindSigned = this.sp.signBlindMessage(blinded);
+        byte[] unblindedSignature = this.blindSignerAlice.unblind(blindSigned);
 
-        LOG.info("verify blinded: " + blinded + " with " + randomHashAlice.getBytes());
-        assertFalse(this.blindSigner.verify(blinded, otherHashAlice.getBytes()));
+        LOG.info("verify blinded: " + blinded + " with " + otherHashAlice.getBytes() + " - should fail");
+        assertFalse(this.blindSignerAlice.verify(unblindedSignature, otherHashAlice.getBytes(), this.sp.getPublicSignatureKey()));
+
+        LOG.info("verify blinded: " + blinded + " with " + otherHashAlice.getBytes() + " - should pass");
+        assertTrue(this.blindSignerAlice.verify(unblindedSignature, randomHashAlice.getBytes(), this.sp.getPublicSignatureKey()));
     }
 
     /**
@@ -95,18 +106,17 @@ public class WonProtocolE2ETest {
         assertTrue(this.r.verifySignature(sigS, rr, certS));
         assertTrue(this.s.verifySignature(sigR, sr, certR));
 
-        Reputationtoken RTr = this.r.createReputationToken(certR, sigR);  // requestor creates Rep token with own cert and the signed send_randomhash from supplier
-        byte[] blindRTr = this.blindSigner.blindAndSign(RTr.getBytes());
+        Reputationtoken RTr = this.r.createReputationToken(certR, sigR); // requestor creates Rep token with own cert and the signed send_randomhash from supplier
+        byte[] blindRTr = this.blindSignerAlice.blindMessage(RTr.getBytes()); // we blind the token first before SP recieves it
+        byte[] blindSigntedRTr = this.sp.signBlindMessage(blindRTr);
+        byte[] unblindedSignatureRTr = this.blindSignerAlice.unblind(blindSigntedRTr);
 
-        Reputationtoken RTs = this.s.createReputationToken(certS, sigS);  // supplier creates Rep token with own cert and the signed send_randomhash from requestor
-        byte[] blindRTs = this.blindSigner.blindAndSign(RTs.getBytes());
+        Reputationtoken RTs = this.s.createReputationToken(certS, sigS); // supplier creates Rep token with own cert and the signed send_randomhash from requestor
+        byte[] blindRTs = this.blindSignerBob.blindMessage(RTs.getBytes());
+        byte[] blindSigntedRTs = this.sp.signBlindMessage(blindRTs);
+        byte[] unblindedSignatureRTs = this.blindSignerBob.unblind(blindSigntedRTs);
 
-        this.r.exchangeReputationToken(RTr);
-        this.s.exchangeReputationToken(RTs);
-
-        // TODO interact with SP to get a blindsignature (RSA) of {certR, sigR(sr)}
-        // check signature of RT, cert and send_randomhash ... provide original number from the other user
-        assertTrue(this.blindSigner.verify(blindRTr, RTr.getBytes())); // check Rep token from Requestor with original Hash
-        assertTrue(this.blindSigner.verify(blindRTs, RTs.getBytes())); // check Rep token from Supplier with original Hash
+        assertTrue(this.blindSignerAlice.verify(unblindedSignatureRTs, RTs.getBytes(), this.sp.getPublicSignatureKey())); // check Rep token from Requestor with original Hash
+        assertTrue(this.blindSignerBob.verify(unblindedSignatureRTr, RTr.getBytes(), this.sp.getPublicSignatureKey())); // check Rep token from Supplier with original Hash
     }
 }

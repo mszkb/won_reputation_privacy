@@ -10,8 +10,7 @@ import java.security.SecureRandom;
 public class HashUtils {
     public static String generateRandomHash() throws NoSuchAlgorithmException {
         SecureRandom rnd = new SecureRandom();
-        String randomNumber = String.valueOf(rnd.nextInt(10000));
-
+        String randomNumber = String.valueOf(rnd.nextInt(10000)); // TODO next int without bound
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         byte[] hash = digest.digest(
                 randomNumber.getBytes(StandardCharsets.UTF_8));

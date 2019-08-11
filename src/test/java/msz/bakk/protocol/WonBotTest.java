@@ -68,7 +68,7 @@ public class WonBotTest extends TestBase {
     @Before
     public void setUp() throws InterruptedException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
         this.params = new TrustedParty().generateParams();
-        this.sp = new Signer(this.params);
+        this.sp = new Signer();
 
         this.reputationServer = new ReputationServer(this.in, this.out, this.sp.getPublicKey());
         this.reputationServerThread = new Thread(reputationServer);

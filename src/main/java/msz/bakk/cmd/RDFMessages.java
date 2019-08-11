@@ -1,12 +1,12 @@
 package msz.bakk.cmd;
 
 import msz.bakk.protocol.Message.Certificate;
+import msz.bakk.protocol.Message.Message;
 import msz.bakk.protocol.Message.Reputationtoken;
 import msz.bakk.protocol.Utils.MessageUtils;
 import msz.bakk.protocol.Utils.WonRepRdfUtils;
 import msz.bakk.protocol.vocabulary.REP;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.vocabulary.RDF;
@@ -16,10 +16,9 @@ import won.protocol.util.RdfUtils;
 import won.protocol.vocabulary.CERT;
 import won.protocol.vocabulary.WON;
 
-import java.math.BigInteger;
+import java.io.IOException;
 import java.net.URI;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 
 public class RDFMessages {
@@ -94,6 +93,13 @@ public class RDFMessages {
         return model;
     }
 
+    public static Model createBlindedReputationToken(String blindedToken) {
+        Model model = WonRepRdfUtils.createBaseModel();
+        Resource blindedReputationToken = RdfUtils.findOrCreateBaseResource(model);
+        blindedReputationToken.addProperty(REP.BLINDED_REPUTATIONTOKEN, blindedToken);
+        return model;
+    }
+
     public static Model createReputationToken(String signedHash, Certificate cert) {
         Model model = WonRepRdfUtils.createBaseModel();
         Resource baseRes = RdfUtils.findOrCreateBaseResource(model);
@@ -106,25 +112,33 @@ public class RDFMessages {
         return model;
     }
 
-    public static Model blindAnswer(Reputationtoken RT, String blindSignature) {
-        Model model = createReputationToken(MessageUtils.encodeBytes(RT.getSignatureOfHash()), RT.getCertificate());
-        Resource baseRes = RdfUtils.findOrCreateBaseResource(model);
-
-        Statement stmt = model.createStatement(baseRes, REP.BLIND_SIGNED_REPUTATIONTOKEN, blindSignature);
-        model.add(stmt);
-
+    public static Model blindSignedAnswer(String blindedToken, String blindSignedToken) {
+        Model model = createBlindedReputationToken(blindedToken);
+        Resource blindSignedTokenRes = RdfUtils.findOrCreateBaseResource(model);
+        blindSignedTokenRes.addProperty(REP.BLIND_SIGNED_REPUTATIONTOKEN, blindSignedToken);
         return model;
     }
 
-    public static Model rate(float rating, String message, Reputationtoken RT, String blindSignature, String originalRandom) {
-        Model model = blindAnswer(RT, blindSignature);
+    public static Model createExchangeTokenMessage(Reputationtoken RT, String blindSignedToken) throws IOException {
+        Model model = createReputationToken(MessageUtils.toString(RT.getSignatureOfHash()), RT.getCertificate());
+        Resource blindSignedTokenRes = RdfUtils.findOrCreateBaseResource(model);
+        blindSignedTokenRes.addProperty(REP.BLIND_SIGNED_REPUTATIONTOKEN, blindSignedToken);
+        return model;
+    }
+
+    public static Model rate(float rating, String message, Reputationtoken RT, String blindSignature, String originalRandom) throws IOException {
+        Model model = createReputationToken(MessageUtils.toString(RT.getSignatureOfHash()), RT.getCertificate());
         Resource baseRes = RdfUtils.findOrCreateBaseResource(model);
+        Resource blindSignedTokenRes = RdfUtils.findOrCreateBaseResource(model);
+        blindSignedTokenRes.addProperty(REP.BLIND_SIGNED_REPUTATIONTOKEN, blindSignature);
 
         Statement stmt = model.createStatement(baseRes, REP.RATING, String.valueOf(rating));
         model.add(stmt);
         stmt = model.createStatement(baseRes, REP.RATING_COMMENT, message);
         model.add(stmt);
         stmt = model.createStatement(baseRes, REP.ORIGINAL, originalRandom);
+        model.add(stmt);
+        stmt = model.createStatement(baseRes, REP.REPUTATIONTOKEN_ENCODED, MessageUtils.toString(RT));
         model.add(stmt);
 
         return model;

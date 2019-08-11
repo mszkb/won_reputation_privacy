@@ -12,6 +12,8 @@ public class REP {
     public static final Property USER_ID = m.createProperty(BASE_URI + "userId");
     public static final Property PUBLIC_KEY = m.createProperty(BASE_URI + "publicKey");
     public static final Property REPUTATIONTOKEN = m.createProperty(BASE_URI + "ReputationToken");
+    public static final Property REPUTATIONTOKEN_ENCODED = m.createProperty(BASE_URI + "ReputationTokenEncoded");
+    public static final Property BLINDED_REPUTATIONTOKEN = m.createProperty(BASE_URI + "blindedReputationToken");
     public static final Property BLIND_SIGNED_REPUTATIONTOKEN = m
                     .createProperty(BASE_URI + "blindSignedReputationToken");
     public static final Property RATING = m.createProperty(BASE_URI + "rating");

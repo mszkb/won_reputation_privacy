@@ -22,7 +22,7 @@ public class WonConnectionTest extends TestBase {
     @Before
     public void setUp() throws NoSuchAlgorithmException {
         this.params = new TrustedParty().generateParams();
-        this.sp = new Signer(this.params);
+        this.sp = new Signer();
     }
 
     public void connectionTest() throws Exception {

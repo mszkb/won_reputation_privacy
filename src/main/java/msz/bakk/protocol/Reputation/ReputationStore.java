@@ -1,15 +1,15 @@
 package msz.bakk.protocol.Reputation;
 
-import msz.bakk.protocol.Signer.BlindSignature;
+import msz.bakk.protocol.Utils.BlindSignatureUtils;
 
 public class ReputationStore {
-    private BlindSignature blindSignature = new BlindSignature();
+    private BlindSignatureUtils blindSignature = new BlindSignatureUtils();
 
     public ReputationStore() {
 
     }
 
-    public BlindSignature getBlindingHelper() {
+    public BlindSignatureUtils getBlindingHelper() {
         return this.blindSignature;
     }
 }

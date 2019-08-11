@@ -1,11 +1,13 @@
 package msz.bakk.cmd;
 
+import msz.bakk.protocol.Message.Message;
 import msz.bakk.protocol.Utils.ECUtils;
 import msz.bakk.protocol.Utils.MessageUtils;
-import msz.bakk.protocol.Utils.RSAUtils;
 import msz.bakk.protocol.vocabulary.REP;
+import org.apache.activemq.command.MessageAck;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.rdf.model.*;
+import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 import org.junit.Before;
 import org.junit.Test;
 import won.protocol.message.WonMessage;
@@ -15,6 +17,7 @@ import java.io.IOException;
 import java.security.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -31,13 +34,11 @@ public class CmdMessageTests {
 
     private CLI cliAlice;
     private CLI cliBob;
-    private CLI cliCarol;
-    private CLI cliCharlie;
 
     private CLI cliSP;
 
     @Before
-    public void setUp() throws IOException, NoSuchProviderException, NoSuchAlgorithmException {
+    public void setUp() throws IOException, NoSuchProviderException, NoSuchAlgorithmException, ClassNotFoundException {
 
         // We initialize our system by:
         // - create CLI instance for each actor (alice, bob, SP)
@@ -46,16 +47,16 @@ public class CmdMessageTests {
 
         cliAlice = new CLI();
         cliBob = new CLI();
-        cliCarol = new CLI();
-        cliCharlie = new CLI();
 
         cliSP = new CLI();
-
         cliSP.initsp();
         cliAlice.addcertificate(cliSP.generatecertificate(cliAlice.publickey()));
         cliBob.addcertificate(cliSP.generatecertificate(cliBob.publickey()));
-        cliCarol.addcertificate(cliSP.generatecertificate(cliCarol.publickey()));
-        cliCharlie.addcertificate(cliSP.generatecertificate(cliCharlie.publickey()));
+
+        AsymmetricKeyParameter spPubKey = cliSP.publicSignatureKey();
+
+        cliAlice.addPublicKeySP(spPubKey);
+        cliBob.addPublicKeySP(spPubKey);
     }
 
     @Test
@@ -71,12 +72,78 @@ public class CmdMessageTests {
         }
     }
 
+
+    /**
+     * This test represents the message to the SP
+     * - send_randomhash
+     * - receive_hash
+     * - send_token_sp
+     *
+     * We test here if the reputation token contains all the right information
+     * to verify the signed hash with the public key inside the certificate
+     */
+    @Test
+    public void test_cli_protocol() throws NoSuchProviderException, IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+
+        // After registration User generates a hash out of a random number
+        cliAlice.send_randomhash();
+        cliBob.send_randomhash();
+
+        // Send hash to other user
+        cliAlice.receive_hash(cliBob.getMyRandomHash());
+        cliBob.receive_hash(cliAlice.getMyRandomHash());
+
+        // User creates a reputation token, blinds the token and sends to the SP
+        cliAlice.send_token_sp();
+        cliBob.send_token_sp();
+
+        // SP sends back a blind signed token
+        cliAlice.receive_blindtoken_sp(cliSP.blindsigntoken_helper(cliAlice.getMyBlindedToken()));
+        cliBob.receive_blindtoken_sp(cliSP.blindsigntoken_helper(cliBob.getMyBlindedToken()));
+
+        // Both user unblinds the token and exchange it along with the reputation token
+        cliAlice.send_token_user();
+        cliBob.send_token_user();
+
+        // Both user checks the unblinded token with the original one with the publickey of the SP
+        assertTrue(cliAlice.receive_token_user(cliBob.getMyUnblindSignedToken(), cliBob.getEncodedReputationToken()));
+        assertTrue(cliBob.receive_token_user(cliAlice.getMyUnblindSignedToken(), cliAlice.getEncodedReputationToken()));
+
+        // Checks are positiv. Users can rate each other
+        cliAlice.rate_user(5.0f, "Smooth transaction");
+        cliBob.rate_user(4.5f, "Smooth transaction 2");
+
+        // User send to the SP
+        // rating, comment/message, unblinded signed token, reputation token, original random number
+        assertTrue(cliSP.rate(5.0f, "Smooth transaction", MessageUtils.toString(cliAlice.getOtherReputationToken()), cliAlice.getOtherUnblindedToken(), cliAlice.getMyRandom()));
+        assertTrue(cliSP.rate(4.5f, "Smooth transaction 2", MessageUtils.toString(cliBob.getOtherReputationToken()), cliBob.getOtherUnblindedToken(), cliBob.getMyRandom()));
+
+        // We check if SP persists the rating
+        assertThat(cliSP.showrating("1")).contains("4.5");
+        assertThat(cliSP.showrating("2")).contains("5.0");
+    }
+
+    @Test
+    public void test_use_own_token() throws NoSuchAlgorithmException, NoSuchProviderException, IOException, SignatureException, InvalidKeyException {
+        cliAlice.send_randomhash();
+        cliBob.send_randomhash();
+        cliAlice.receive_hash(cliBob.getMyRandomHash());
+        cliAlice.send_token_sp();
+
+        cliAlice.receive_blindtoken_sp(cliSP.blindsigntoken_helper(cliAlice.getMyBlindedToken()));
+
+        // We cant use our token on ourself, because we do not know the original random number
+        // This will be detected by the SP and might result in a penality
+        assertFalse(cliSP.rate(5.0f, "Smooth transaction", MessageUtils.toString(cliAlice.getMyReputationToken()), cliAlice.getMyUnblindSignedToken(), cliAlice.getMyRandom()));
+    }
+
+
     /**
      * This test represents 'send_randomhash'
      * and verifies against a regex pattern
      */
     @Test
-    public void test_randomHash() {
+    public void test_won_message_randomHash() {
         // We create a WonMessage randomHash
         WonMessage msgAliceHash = cliAlice.send_randomhash();
 
@@ -114,7 +181,7 @@ public class CmdMessageTests {
      *  verify_hash checks if the hash and the signature are valid against the public key inside the certificate
      */
     @Test
-    public void test_verify_hash() throws NoSuchProviderException, IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+    public void test_won_message_verify_hash() throws NoSuchProviderException, IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         WonMessage msgAliceHash = cliAlice.send_randomhash();
         Model modelAliceHash = msgAliceHash.getMessageContent().getUnionModel();
         Statement stmtAlice = modelAliceHash.getProperty(RdfUtils.getBaseResource(modelAliceHash), REP.RANDOM_HASH);
@@ -132,81 +199,15 @@ public class CmdMessageTests {
         String hashBob  = stmtBob.getObject().asLiteral().getLexicalForm();
         assertTrue(hashBob.matches(regexHash));
 
-
-        // To verify the hash we get the signed hash out of the
-        // Receive_hash signs the hash with own private key and stores the original hash into 'otherHash'
+        // the receive_hash method signs the hash with own private key
+        // and stores the original hash into 'otherHash' field
         cliAlice.receive_hash(hashBob);
         cliBob.receive_hash(hashAlice);
 
-        // Verifying the hash does not need any arguments
-        // the sent hash and the signedhash are saved into fields
+        // We test if the hash we signed was signed correctly
+        // Verify the signature with the public key
         assertTrue(cliAlice.verify_hash());
         assertTrue(cliBob.verify_hash());
-    }
-
-    /**
-     * This test represents the message to the SP
-     * - send_randomhash
-     * - receive_hash
-     * - send_token_sp
-     *
-     * We test here if the reputation token contains all the right information
-     * to verify the signed hash with the public key inside the certificate
-     */
-    @Test
-    public void test_send_token_sp() throws NoSuchProviderException, IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-        WonMessage msgAliceHash = cliAlice.send_randomhash();
-        Model modelAliceHash = msgAliceHash.getMessageContent().getUnionModel();
-        Statement stmtAlice = modelAliceHash.getProperty(RdfUtils.getBaseResource(modelAliceHash), REP.RANDOM_HASH);
-        assertThat(stmtAlice).isNotNull();
-
-        String hashAlice  = stmtAlice.getObject().asLiteral().getLexicalForm();
-        assertTrue(hashAlice.matches(regexHash));
-
-
-        WonMessage msgBobHash = cliBob.send_randomhash();
-        Model modelBobHash = msgBobHash.getMessageContent().getUnionModel();
-        Statement stmtBob = modelBobHash.getProperty(RdfUtils.getBaseResource(modelBobHash), REP.RANDOM_HASH);
-        assertThat(stmtBob).isNotNull();
-
-        String hashBob  = stmtBob.getObject().asLiteral().getLexicalForm();
-        assertTrue(hashBob.matches(regexHash));
-
-
-        cliAlice.receive_hash(hashBob);
-        cliBob.receive_hash(hashAlice);
-
-
-        WonMessage msgAliceTokenMsg = cliAlice.send_token_sp();        // CLI Tool creates WonMessage
-        Model msgAliceToken = msgAliceTokenMsg.getMessageContent().getUnionModel();    // We only want the message content
-
-        // We traverse the graph
-        // First we want the Reputation triple
-        Statement stmtAliceToken = msgAliceToken.getProperty(RdfUtils.getBaseResource(msgAliceToken), REP.REPUTATIONTOKEN);
-
-        // Next we want to check the signed random hash
-        Statement stmtAliceSignedHash = stmtAliceToken.getProperty(REP.SIGNED_RANDOM_HASH);
-        String aliceSignedHash = stmtAliceSignedHash.getObject().asLiteral().getLexicalForm();
-
-        // We check the signature from alice with the original hash from bob with the public key of alice
-        assertTrue(RSAUtils.verifySignature(
-                MessageUtils.decodeToBytes(aliceSignedHash),
-                hashBob,
-                MessageUtils.decodePubKey(cliAlice.publickey())));
-
-
-
-        WonMessage msgBobTokenMsg = cliBob.send_token_sp();
-        Dataset content = msgBobTokenMsg.getMessageContent();
-        Model msgBobToken = content.getUnionModel();
-        Statement stmtBobToken = msgBobToken.getProperty(RdfUtils.getBaseResource(msgBobToken), REP.REPUTATIONTOKEN);
-        Statement stmtBobSignedHash = stmtBobToken.getProperty(REP.SIGNED_RANDOM_HASH);
-        String bobSignedHash = stmtBobSignedHash.getObject().asLiteral().getLexicalForm();
-
-        assertTrue(RSAUtils.verifySignature(
-                MessageUtils.decodeToBytes(bobSignedHash),
-                hashAlice,
-                MessageUtils.decodePubKey(cliBob.publickey())));
     }
 
     /**
@@ -222,54 +223,44 @@ public class CmdMessageTests {
      *
      * Alice/Bob
      * - receive_blindtoken
+     * - exchange_token
      *
-     * We send the reputation token to the SP and the SP returns a blind signature
-     * We get the blind signature out of the Message, then we use a helper method (cliSP.verify)
-     * to get access to the verification method of the SP to verify the blind signature
+     * We send the blinded reputation token to the SP and the SP returns a blind signature
+     * We unblind the blind signature, and send the unblinded signature and reputation token to the other user
+     * Other user receives unblinded signature and the reputation token and verifies them
      */
     @Test
-    public void test_blindsigntoken() throws NoSuchProviderException, IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+    public void test_won_message_sendtokensp() throws NoSuchProviderException, IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        // We use helper methods to get out the randomhash
+        // for the full test @see test_won_message_randomHash
         cliAlice.send_randomhash();
         cliBob.send_randomhash();
-
-        // We use helper methods to get out the randomhash
-        // The WonMessage which contains the randomhash was tested before
         cliAlice.receive_hash(cliBob.getMyRandomHash());
         cliBob.receive_hash(cliAlice.getMyRandomHash());
 
+
         // CLI Tool creates WonMessage
-        // send_token_sp saves the reputationtoken into a field for easier testing
-        cliAlice.send_token_sp();
-        cliBob.send_token_sp();
+        // send_token_sp returns a WonMessage containing the blinded token which is sent to the SP
+        // we extract REP.BLINDED_REPUTATIONTOKEN and pass it to the SP
+        WonMessage msgBlindedTokenAlice = cliAlice.send_token_sp();
+        Model modelBlindTokenAlice = msgBlindedTokenAlice.getMessageContent().getUnionModel();
+        Statement stmtBlindTokenAlice = modelBlindTokenAlice.getProperty(RdfUtils.getBaseResource(modelBlindTokenAlice), REP.BLINDED_REPUTATIONTOKEN);
+        String blindTokenAliceForSP = stmtBlindTokenAlice.getObject().asLiteral().getLexicalForm();
 
-        // We use some helper methods to make tests easier
-        String encodedTokenAlice = cliAlice.getEncodedReputationToken();
-        String encodedTokenBob = cliBob.getEncodedReputationToken();
-
-
-        // The Service Provider receives the base64 encoded token from alice
-        // SP blind signs the token and we get a WonMessage
-        // The WonMessage contains the original token and the blinded token
-        WonMessage msgSPblindTokenForAlice = cliSP.blindsigntoken(encodedTokenAlice);
+        // The Service Provider receives the blinded token from alice
+        // SP blind signs the token and we sends back a WonMessage
+        // The WonMessage contains the blinded token and the blind signed token
+        WonMessage msgSPblindTokenForAlice = cliSP.blindsigntoken(blindTokenAliceForSP);
         Model modelBlindTokenForAlice = msgSPblindTokenForAlice.getMessageContent().getUnionModel();
-        Statement stmtBlindTokenAlice = modelBlindTokenForAlice.getProperty(RdfUtils.getBaseResource(modelBlindTokenForAlice), REP.BLIND_SIGNED_REPUTATIONTOKEN);
-        String blindTokenForAlice = stmtBlindTokenAlice.getObject().asLiteral().getLexicalForm();
+        Statement stmtBlindTokenForAlice = modelBlindTokenForAlice.getProperty(RdfUtils.getBaseResource(modelBlindTokenForAlice), REP.BLIND_SIGNED_REPUTATIONTOKEN);
+        String blindTokenForAlice = stmtBlindTokenForAlice.getObject().asLiteral().getLexicalForm();
 
         // alice recieves the token by setting the token into a field
+        // receive_blindtoken_sp unblinds the blind signature
         cliAlice.receive_blindtoken_sp(blindTokenForAlice);
-        assertThat(cliAlice.getMyBlindedToken()).isNotNull();
 
-        WonMessage msgSPblindTokenForBob = cliSP.blindsigntoken(encodedTokenBob);
-        Model modelBlindTokenForBob = msgSPblindTokenForBob.getMessageContent().getUnionModel();
-        Statement stmtBlindTokenBob = modelBlindTokenForBob.getProperty(RdfUtils.getBaseResource(modelBlindTokenForAlice), REP.BLIND_SIGNED_REPUTATIONTOKEN);
-        String blindTokenForBob = stmtBlindTokenBob.getObject().asLiteral().getLexicalForm();
-        cliBob.receive_blindtoken_sp(blindTokenForBob);
-
-        assertThat(cliBob.getMyBlindedToken()).isNotNull();
-
-        // SP can verify the blinded token with the base64 encoded original token
-        assertTrue(cliSP.verify(blindTokenForAlice, encodedTokenAlice));
-        assertTrue(cliSP.verify(blindTokenForBob, encodedTokenBob));
+        // SP can verify the unblinded token with the encoded original token
+        assertTrue(cliSP.verify(cliAlice.getMyUnblindSignedToken(), cliAlice.getEncodedReputationToken()));
     }
 
     /**
@@ -293,73 +284,78 @@ public class CmdMessageTests {
      */
     @Test
     public void test_rate_person() throws NoSuchProviderException, IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        // We use some helper methods to make tests easier
+        // for detailed tests: @see test_won_message_sendtokensp
+        //                          test_won_message_verify_hash
+        //                          test_won_message_randomHash
         cliAlice.send_randomhash();
         cliBob.send_randomhash();
-
-        // We use helper methods to get out the randomhash
-        // The WonMessage which contains the randomhash was tested before
+        // @see test_won_message_verify_hash
         cliAlice.receive_hash(cliBob.getMyRandomHash());
         cliBob.receive_hash(cliAlice.getMyRandomHash());
-
-        // CLI Tool creates WonMessage
-        // send_token_sp saves the reputationtoken into a field for easier testing
         cliAlice.send_token_sp();
         cliBob.send_token_sp();
-
-        // We use some helper methods to make tests easier
-        String encodedTokenAliceforBob = cliAlice.getEncodedReputationToken();
-        String encodedTokenBobforAlice = cliBob.getEncodedReputationToken();
-
-        String blindedTokenAliceForBob = cliSP.blindsigntoken_helper(encodedTokenAliceforBob);
-        String blindedTokenBobForAlice = cliSP.blindsigntoken_helper(encodedTokenBobforAlice);
-
+        // @see test_won_message_sendtokensp
+        String blindedTokenAliceForBob = cliSP.blindsigntoken_helper(cliAlice.getMyBlindedToken());
+        String blindedTokenBobForAlice = cliSP.blindsigntoken_helper(cliBob.getMyBlindedToken());
         cliAlice.receive_blindtoken_sp(blindedTokenAliceForBob);
         cliBob.receive_blindtoken_sp(blindedTokenBobForAlice);
+        cliAlice.receive_token_user(cliBob.getMyUnblindSignedToken(), cliBob.getEncodedReputationToken());
+        cliBob.receive_token_user(cliAlice.getMyUnblindSignedToken(), cliAlice.getEncodedReputationToken());
 
-        cliAlice.receive_token_user(encodedTokenBobforAlice, blindedTokenBobForAlice);
-        cliBob.receive_token_user(encodedTokenBobforAlice, blindedTokenAliceForBob);
 
+        // We want to test the WonMessage of rating a user
+        // Those messages contains:
+        // - rating
+        // - comment
+        // - reputation token
+        // - unblinded signed reputation token
+        // - original random number
 
+        // We extract all of these out of the message
         WonMessage msgAliceRatesBob = cliAlice.rate_user(5.0f, "Nice and smooth transaction");
         Model modelAliceRatesBob = msgAliceRatesBob.getMessageContent().getUnionModel();
         Statement stmtAliceRatesBobRating = modelAliceRatesBob.getProperty(RdfUtils.getBaseResource(modelAliceRatesBob), REP.RATING);
         Statement stmtAliceRatesBobMessage = modelAliceRatesBob.getProperty(RdfUtils.getBaseResource(modelAliceRatesBob), REP.RATING_COMMENT);
+        Statement stmtAliceRatesBobAliceOriginal = modelAliceRatesBob.getProperty(RdfUtils.getBaseResource(modelAliceRatesBob), REP.ORIGINAL);
+        Statement stmtAliceRatesBobBlindSignedToken = modelAliceRatesBob.getProperty(RdfUtils.getBaseResource(modelAliceRatesBob), REP.BLIND_SIGNED_REPUTATIONTOKEN);
+        Statement stmtAliceRatesBobReputationToken = modelAliceRatesBob.getProperty(RdfUtils.getBaseResource(modelAliceRatesBob), REP.REPUTATIONTOKEN_ENCODED);
         String aliceRatesBobRating = stmtAliceRatesBobRating.getObject().asLiteral().getLexicalForm();
         String aliceRatesBobComment = stmtAliceRatesBobMessage.getObject().asLiteral().getLexicalForm();
+        String aliceRatesBobReputationToken = stmtAliceRatesBobReputationToken.getObject().asLiteral().getLexicalForm();
+        String aliceRatesBobBlindedToken = stmtAliceRatesBobBlindSignedToken.getObject().asLiteral().getLexicalForm();
+        String aliceRatesBobOriginal = stmtAliceRatesBobAliceOriginal.getObject().asLiteral().getLexicalForm();
 
-        assertThat(aliceRatesBobRating).isEqualTo("5.0"); // We receive a string here
-        assertThat(aliceRatesBobComment).isEqualTo("Nice and smooth transaction");
 
-
-        WonMessage msgBobRatesAlice = cliAlice.rate_user(4.5f, "2 Nice and smooth transaction");
+        WonMessage msgBobRatesAlice = cliBob.rate_user(4.5f, "2 Nice and smooth transaction");
         Model modelBobRatesAlice = msgBobRatesAlice.getMessageContent().getUnionModel();
         Statement stmtBobRatesAliceRating = modelBobRatesAlice.getProperty(RdfUtils.getBaseResource(modelBobRatesAlice), REP.RATING);
         Statement stmtBobRatesAliceMessage = modelBobRatesAlice.getProperty(RdfUtils.getBaseResource(modelBobRatesAlice), REP.RATING_COMMENT);
+        Statement stmtBobRatesAliceOriginal = modelBobRatesAlice.getProperty(RdfUtils.getBaseResource(modelBobRatesAlice), REP.ORIGINAL);
+        Statement stmtBobRatesAliceBlindSignedToken = modelBobRatesAlice.getProperty(RdfUtils.getBaseResource(modelBobRatesAlice), REP.BLIND_SIGNED_REPUTATIONTOKEN);
+        Statement stmtBobRatesAliceReputationToken = modelBobRatesAlice.getProperty(RdfUtils.getBaseResource(modelBobRatesAlice), REP.REPUTATIONTOKEN_ENCODED);
         String bobRatesAliceRating = stmtBobRatesAliceRating.getObject().asLiteral().getLexicalForm();
         String bobRatesAliceComment = stmtBobRatesAliceMessage.getObject().asLiteral().getLexicalForm();
-
-        assertThat(bobRatesAliceRating).isEqualTo("4.5"); // We receive a string here
-        assertThat(bobRatesAliceComment).isEqualTo("2 Nice and smooth transaction");
-
+        String bobRatesAliceReputationToken = stmtBobRatesAliceReputationToken.getObject().asLiteral().getLexicalForm();
+        String bobRatesAliceBlindedToken = stmtBobRatesAliceBlindSignedToken.getObject().asLiteral().getLexicalForm();
+        String bobRatesAliceOriginal = stmtBobRatesAliceOriginal.getObject().asLiteral().getLexicalForm();
 
         cliSP.rate(
-                5.0f,
+                Float.parseFloat(aliceRatesBobRating),
                 aliceRatesBobComment,
-                encodedTokenBobforAlice,
-                blindedTokenBobForAlice,
-                cliAlice.getMyRandom());
+                aliceRatesBobReputationToken,
+                aliceRatesBobBlindedToken,
+                aliceRatesBobOriginal);
 
         cliSP.rate(
-                4.5f,
+                Float.parseFloat(bobRatesAliceRating),
                 bobRatesAliceComment,
-                encodedTokenAliceforBob,
-                blindedTokenAliceForBob,
-                cliBob.getMyRandom());
+                bobRatesAliceReputationToken,
+                bobRatesAliceBlindedToken,
+                bobRatesAliceOriginal);
 
         assertThat(cliSP.showrating("1")).isEqualTo("4.5");
         assertThat(cliSP.showrating("2")).isEqualTo("5.0");
-
-
     }
 
     @Test
@@ -378,87 +374,39 @@ public class CmdMessageTests {
         cliBob.send_token_sp();
 
         // We use some helper methods to make tests easier
-        String encodedTokenAliceforBob = cliAlice.getEncodedReputationToken();
-        String encodedTokenBobforAlice = cliBob.getEncodedReputationToken();
 
-        String blindedTokenAliceForBob = cliSP.blindsigntoken_helper(encodedTokenAliceforBob);
-        String blindedTokenBobForAlice = cliSP.blindsigntoken_helper(encodedTokenBobforAlice);
+        String blindedTokenAliceForBob = cliSP.blindsigntoken_helper(cliAlice.getMyBlindedToken());
+        String blindedTokenBobForAlice = cliSP.blindsigntoken_helper(cliBob.getMyBlindedToken());
 
         cliAlice.receive_blindtoken_sp(blindedTokenAliceForBob);
         cliBob.receive_blindtoken_sp(blindedTokenBobForAlice);
 
-        cliAlice.receive_token_user(encodedTokenBobforAlice, blindedTokenBobForAlice);
-        cliBob.receive_token_user(encodedTokenBobforAlice, blindedTokenAliceForBob);
+        cliAlice.receive_token_user(cliBob.getMyUnblindSignedToken(), cliBob.getEncodedReputationToken());
+        cliBob.receive_token_user(cliAlice.getMyUnblindSignedToken(), cliAlice.getEncodedReputationToken());
 
         cliSP.rate(
                 5.0f,
                 "Nice and smooth transaction",
-                encodedTokenBobforAlice,
-                blindedTokenBobForAlice,
+                MessageUtils.toString(cliAlice.getOtherReputationToken()),
+                cliAlice.getOtherUnblindedToken(),
                 cliAlice.getMyRandom());
 
         cliSP.rate(
                 4.5f,
                 "Nice and quick",
-                encodedTokenAliceforBob,
-                blindedTokenAliceForBob,
+                MessageUtils.toString(cliBob.getOtherReputationToken()),
+                cliBob.getOtherUnblindedToken(),
                 cliBob.getMyRandom());
 
-        assertThat(cliSP.rate(
+        assertFalse(cliSP.rate(
                 4.0f,
                 "I rated Bob twice",
-                encodedTokenBobforAlice,
-                blindedTokenBobForAlice,
-                cliAlice.getMyRandom())).contains("FAILED");
+                MessageUtils.toString(cliAlice.getOtherReputationToken()),
+                cliAlice.getOtherUnblindedToken(),
+                cliAlice.getMyRandom()));
 
         assertThat(cliSP.showrating("2")).isEqualTo("5.0");
     }
 
-    @Test
-    public void test_use_own_token() throws NoSuchAlgorithmException, NoSuchProviderException, IOException, SignatureException, InvalidKeyException {
-        cliAlice.send_randomhash();
-        cliBob.send_randomhash();
 
-        // We use helper methods to get out the randomhash
-        // The WonMessage which contains the randomhash was tested before
-        cliAlice.receive_hash(cliBob.getMyRandomHash());
-        cliBob.receive_hash(cliAlice.getMyRandomHash());
-
-        // CLI Tool creates WonMessage
-        // send_token_sp saves the reputationtoken into a field for easier testing
-        cliAlice.send_token_sp();
-        cliBob.send_token_sp();
-
-        // We use some helper methods to make tests easier
-        String encodedTokenAliceforBob = cliAlice.getEncodedReputationToken();
-        String encodedTokenBobforAlice = cliBob.getEncodedReputationToken();
-
-        String blindedTokenAliceForBob = cliSP.blindsigntoken_helper(encodedTokenAliceforBob);
-        String blindedTokenBobForAlice = cliSP.blindsigntoken_helper(encodedTokenBobforAlice);
-
-        cliAlice.receive_blindtoken_sp(blindedTokenAliceForBob);
-        cliBob.receive_blindtoken_sp(blindedTokenBobForAlice);
-
-        WonMessage msgAliceSendsBobTokens = cliAlice.send_token_user();
-        Model modelAliceSendsBobTokens = msgAliceSendsBobTokens.getMessageContent().getUnionModel();
-        Statement stmtAliceRatesBobRating1 = modelAliceSendsBobTokens.getProperty(RdfUtils.getBaseResource(modelAliceSendsBobTokens), REP.BLIND_SIGNED_REPUTATIONTOKEN);
-        String aliceSendsBobTokensToken1 = stmtAliceRatesBobRating1.getObject().asLiteral().getLexicalForm();
-
-        Statement stmtAliceToken = modelAliceSendsBobTokens.getProperty(RdfUtils.getBaseResource(modelAliceSendsBobTokens), REP.REPUTATIONTOKEN);
-        Statement stmtAliceSignedHash = stmtAliceToken.getProperty(REP.SIGNED_RANDOM_HASH);
-        String aliceSignedHash = stmtAliceSignedHash.getObject().asLiteral().getLexicalForm();
-
-        assertThat(aliceSendsBobTokensToken1).isNotNull();
-        assertThat(aliceSignedHash).isNotNull();
-
-        cliAlice.receive_token_user(encodedTokenBobforAlice, blindedTokenBobForAlice);
-        cliBob.receive_token_user(encodedTokenBobforAlice, blindedTokenAliceForBob);
-
-        assertThat(cliSP.rate(
-                5.0f,
-                "Nice and smooth transaction",
-                encodedTokenAliceforBob,
-                blindedTokenAliceForBob,
-                cliAlice.getMyRandom())).contains("FAILED");
-    }
 }

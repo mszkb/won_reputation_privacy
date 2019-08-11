@@ -1,12 +1,11 @@
 package msz.bakk.cmd;
 
 import msz.bakk.protocol.Message.Certificate;
+import msz.bakk.protocol.Message.Message;
 import msz.bakk.protocol.Message.Reputationtoken;
 import msz.bakk.protocol.Reputation.Reputation;
-import msz.bakk.protocol.Signer.BlindSignature;
+import msz.bakk.protocol.Utils.BlindSignatureUtils;
 import msz.bakk.protocol.Signer.Signer;
-import msz.bakk.protocol.TrustedParty.Params;
-import msz.bakk.protocol.TrustedParty.TrustedParty;
 import msz.bakk.protocol.Utils.ECUtils;
 import msz.bakk.protocol.Utils.MessageUtils;
 import msz.bakk.protocol.Utils.RSAUtils;
@@ -15,6 +14,8 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
+import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
+import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
 import won.protocol.message.WonMessage;
@@ -33,28 +34,27 @@ public class CLI {
     private boolean sp = false;
 
     private KeyPair keyPair = ECUtils.generateKeyPair();
+    private BlindSignatureUtils blindSignature = new BlindSignatureUtils();
+
     private String myRandomHash = "";
     private byte[] signedHash;
-    private Params params;
-    private BlindSignature blindSigner;
     private Signer serviceProvider;
 
     private Certificate myCertificate;
     private Reputationtoken myReputationToken;
-    private String myBlindedToken;
+    private byte[] myBlindedToken;
+    private String myUnblindSignedToken;
+    private String myRandom;
 
     private String otherHash;
     private Reputationtoken otherReputationToken;
-    private String otherEncodedReputationToken;
-    private String otherBlindedToken;
+    private byte[] otherUnblindedToken;
 
-    private WonMessage reputationTokenMSG;
-    private WonMessage blindAnswer;
-    private WonMessage rateMsg;
+    private AsymmetricKeyParameter publicKeySP;
+    private AsymmetricKeyParameter spPublicKey;
 
     private HashMap<String, String> usedTokens;
     private HashMap<Integer, List<Reputation>> ratingStore;
-    private String myRandom;
 
     public CLI() {
         if(CmdApplication.shellprefix.equals("SP")) {
@@ -120,18 +120,18 @@ public class CLI {
     public void initsp() throws NoSuchAlgorithmException {
         LOG.info("Initialize service provider");
         this.sp = true;
-
-        LOG.info("Generate Parameters");
-        this.params = new TrustedParty().generateParams();
-
-        LOG.info("Use Parameters for Signer");
-        this.serviceProvider = new Signer(this.params);
+        this.serviceProvider = new Signer();
+        this.publicKeySP = this.serviceProvider.getPublicSignatureKey();
 
         LOG.info("Initilize Blind Signature RSA Utils and Rating store");
         LOG.info("This takes a little bit");
-        this.blindSigner = new BlindSignature();
         this.ratingStore = new HashMap<>();
         this.usedTokens = new HashMap<>();
+    }
+
+    public void addPublicKeySP(AsymmetricKeyParameter spPubKey) {
+        this.spPublicKey = spPubKey;
+        this.blindSignature = new BlindSignatureUtils((RSAKeyParameters) spPubKey);
     }
 
     @ShellMethod(value = "Generating certificate for the users")
@@ -162,6 +162,8 @@ public class CLI {
         return "";
     }
 
+    public Reputationtoken getMyReputationToken() { return this.myReputationToken; }
+
     public String getMyRandomHash() {
         return this.myRandomHash;
     }
@@ -170,13 +172,19 @@ public class CLI {
         return this.myRandom;
     }
 
-    public String getMyBlindedToken() {
-        return this.myBlindedToken;
+    public String getMyUnblindSignedToken() {
+        return this.myUnblindSignedToken;
     }
+
+    public byte[] getMyBlindedToken () { return this.myBlindedToken; }
 
     @ShellMethod(value = "Shows the public key of current instance")
     public String publickey() throws IOException {
         return MessageUtils.toString(this.keyPair.getPublic());
+    }
+
+    public AsymmetricKeyParameter publicSignatureKey() {
+        return this.publicKeySP;
     }
 
     @ShellMethod(value = "Returns user id")
@@ -201,14 +209,14 @@ public class CLI {
     ///----------------------------------------------------------------
 
     @ShellMethod(value = "Blind and sign given token")
-    public WonMessage blindsigntoken(String encodedToken) {
+    public WonMessage blindsigntoken(String encodedBlindedToken) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         if(!this.sp) {
             LOG.error("Only SP is allowed to use this method");
             return null;
         }
 
-        String blindSignature = blindsigntoken_helper(encodedToken);
-        WonMessage msg = RDFMessages.createWonMessage(RDFMessages.blindAnswer(MessageUtils.decodeRT(encodedToken), blindSignature));
+        String blindSignature = blindsigntoken_helper(encodedBlindedToken);
+        WonMessage msg = RDFMessages.createWonMessage(RDFMessages.blindSignedAnswer(encodedBlindedToken, blindSignature));
         RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
         LOG.info("We created the blind signature of your reputation token");
@@ -222,48 +230,51 @@ public class CLI {
      * Helper method
      * for tests - it is also used by the proper method
      */
-    public String blindsigntoken_helper(String encodedToken) {
-        Reputationtoken reputationtoken = MessageUtils.decodeRT(encodedToken);
-        return MessageUtils.encodeBytes(this.blindSigner.blindAndSign(reputationtoken.getBytes()));
+    public String blindsigntoken_helper(byte[] encodedBlindedToken) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        return MessageUtils.encodeBytes(this.serviceProvider.signBlindMessage(encodedBlindedToken));
+    }
+
+    public String blindsigntoken_helper(String encodedBlindedToken) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        return this.blindsigntoken_helper(MessageUtils.decodeToBytes(encodedBlindedToken));
     }
 
     /**
      * Helper method
      * for tests - to quickly check blind token and original token
      */
-    public boolean verify(String blindedToken, String encodedToken) {
+    public boolean verify(String blindedToken, String encodedToken) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         if(!this.sp) {
             LOG.error("Only SP is allowed");
             return false;
         }
         LOG.info("Verify blinded token with original token");
         Reputationtoken reputationtoken = MessageUtils.decodeRT(encodedToken);
-        return this.blindSigner.verify(MessageUtils.decodeToBytes(blindedToken), reputationtoken.getBytes());
+        return this.blindSignature.verify(MessageUtils.decodeToBytes(blindedToken), reputationtoken.getBytes(), this.publicKeySP);
     }
 
     @ShellMethod(value = "rates user")
-    public String rate(float rating, String message, String encodedToken, String encodedBlindToken, String original) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+    public boolean rate(float rating, String message, String encodedToken, String encodedUnblindToken, String original) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         if(!this.sp) {
             LOG.error("Only SP is allowed");
-            return "FAILED";
+            return false;
         }
 
-        if(this.usedTokens.get(encodedBlindToken) != null) {
+        if(this.usedTokens.get(encodedUnblindToken) != null) {
             LOG.error("Token already used");
-            return "FAILED - Token already used";
+            return false;
         }
 
         Reputationtoken reputationtoken = MessageUtils.decodeRT(encodedToken);
-        byte[] blindedToken = MessageUtils.decodeToBytes(encodedBlindToken);
+        byte[] unblindedToken = MessageUtils.decodeToBytes(encodedUnblindToken);
 
-        if(!this.blindSigner.verify(blindedToken, reputationtoken)) {
+        if(!this.blindSignature.verify(unblindedToken, reputationtoken.getBytes(), this.publicKeySP)) {
             LOG.error("BLIND TOKEN VERIFICATION FAILED");
-            return "FAILED - blindedtoken verification failed";
+            return false;
         }
 
         if(!RSAUtils.verifySignature(reputationtoken.getSignatureOfHash(), Utils.generateHash(original), reputationtoken.getPubkeyFromCert())) {
             LOG.error("HASH VERIFICATION FAILED");
-            return "FAILED - send_randomhash signature verification failed";
+            return false;
         }
 
         // User to rate
@@ -271,17 +282,17 @@ public class CLI {
 
         if (this.ratingStore.containsKey(userId)) {
             List<Reputation> list = this.ratingStore.get(userId);
-            list.add(new Reputation(rating, message, MessageUtils.decodeToBytes(encodedBlindToken), MessageUtils.decodeRT(encodedToken)));
+            list.add(new Reputation(rating, message, MessageUtils.decodeToBytes(encodedUnblindToken), MessageUtils.decodeRT(encodedToken)));
         } else {
             List<Reputation> newList = new ArrayList<>();
-            newList.add(new Reputation(rating, message, MessageUtils.decodeToBytes(encodedBlindToken), MessageUtils.decodeRT(encodedToken)));
+            newList.add(new Reputation(rating, message, MessageUtils.decodeToBytes(encodedUnblindToken), MessageUtils.decodeRT(encodedToken)));
             this.ratingStore.put(userId, newList);
         }
 
-        usedTokens.put(encodedBlindToken, original);
+        usedTokens.put(encodedUnblindToken, original);
 
         LOG.info("OK");
-        return "OK";
+        return true;
     }
 
     @ShellMethod(value = "Shows the AVG rating of given user id")
@@ -380,6 +391,8 @@ public class CLI {
             LOG.info("SP: generatecertificate <publickey>");
             LOG.info("WE: addcertificate <encodeded certificate>");
         }
+
+        this.myReputationToken = new Reputationtoken(this.myCertificate, this.signedHash);
     }
 
     // Helper methods do not create a WoN Message
@@ -406,15 +419,15 @@ public class CLI {
             LOG.info("Generate hash on other user and do 'receive_hash <HASH>' here");
         }
 
-        Model m = RDFMessages.createReputationToken(MessageUtils.encodeBytes(this.signedHash), this.myCertificate);
+        this.myBlindedToken = this.blindSignature.blindMessage(this.myReputationToken.getBytes());
 
-        this.myReputationToken = new Reputationtoken(this.myCertificate, this.signedHash);
+        Model m = RDFMessages.createBlindedReputationToken(MessageUtils.encodeBytes(this.myBlindedToken));
+
         WonMessage msg = RDFMessages.createWonMessage(m);
         RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
         LOG.info("COPY next line into 'blindsigntoken <token>' other SP CLI Tool");
         LOG.info(MessageUtils.toString(this.myReputationToken));
-
 
         return msg;
     }
@@ -422,13 +435,13 @@ public class CLI {
     // Helper methods do not create a WoN Message
     // Those methods are primarly used to save variables
     @ShellMethod(value = "HELPER - Recieve token from SP and store it")
-    public void receive_blindtoken_sp(String blindedtoken) {
+    public void receive_blindtoken_sp(String blindSignedToken) {
         if(this.sp) {
             LOG.error("SP is not allowed to execute this function");
             return;
         }
 
-        this.myBlindedToken = blindedtoken;
+        this.myUnblindSignedToken = MessageUtils.encodeBytes(this.unblind_helper(blindSignedToken));
     }
 
     @ShellMethod(value = "We exchange the reputation token - so the other is authorized to rate us")
@@ -436,9 +449,10 @@ public class CLI {
         // Create message to exchange the token
         if(this.sp) {
             LOG.error("SP is not allowed to execute this function");
+            return null;
         }
 
-        Model m = RDFMessages.blindAnswer(this.myReputationToken, this.myBlindedToken);
+        Model m = RDFMessages.createExchangeTokenMessage(this.myReputationToken, this.myUnblindSignedToken);
         WonMessage msg = RDFMessages.createWonMessage(m);
 
         RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
@@ -456,17 +470,54 @@ public class CLI {
         return msg;
     }
 
+    public byte[] unblind_helper(byte[] blindedToken) {
+        return this.blindSignature.unblind(blindedToken);
+    }
+
+    public byte[] unblind_helper(String blindedToken) {
+        return this.unblind_helper(MessageUtils.decodeToBytes(blindedToken));
+    }
+
     // Helper methods do not create a WoN Message
     // Those methods are primarly used to save variables
     @ShellMethod(value = "HELPER - receive the reputation token and blinded token from the other user")
-    public void receive_token_user(String encodededToken, String blindedToken) {
+    public boolean receive_token_user(String unblindedToken, String encodededToken) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         if(this.sp) {
             LOG.error("SP is not allowed to execute this function");
+            return false;
         }
 
         this.otherReputationToken = MessageUtils.decodeRT(encodededToken);
-        this.otherEncodedReputationToken = encodededToken;
-        this.otherBlindedToken = blindedToken;
+        this.otherUnblindedToken = MessageUtils.decodeToBytes(unblindedToken);
+
+        boolean valid = this.verify_blindtoken_helper(this.otherUnblindedToken, this.otherReputationToken);
+        if(!valid) {
+            LOG.error("Blind Signature is not valid");
+            return false;
+        }
+        boolean valid2 = verify_signature_helper(this.otherReputationToken.getSignatureOfHash(), this.myRandomHash, this.otherReputationToken.getPubkeyFromCert());
+        if(!valid2) {
+            LOG.error("Signature of hash is not valid");
+            return false;
+        }
+
+        return true;
+    }
+
+    public boolean verify_blindtoken_helper(byte[] unblindedSignatureRT, Reputationtoken RT) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        return this.blindSignature.verify(unblindedSignatureRT, RT.getBytes(), this.spPublicKey);
+    }
+
+    public boolean verify_signature_helper(byte[] signature, String original, PublicKey publicKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        return RSAUtils.verifySignature(signature, original, publicKey);
+    }
+
+    public Reputationtoken getOtherReputationToken() {
+        return this.otherReputationToken;
+    }
+
+    public String getOtherUnblindedToken() {
+        return MessageUtils.encodeBytes(this.otherUnblindedToken);
     }
 
     @ShellMethod(value = "Check blind signature of the token (SP)")
@@ -483,7 +534,7 @@ public class CLI {
         // - blindedtoken
         // - original random number (to verify the signature of the random hash)
         WonMessage rateMsg = RDFMessages.createWonMessage(
-                RDFMessages.rate(rating, message, this.otherReputationToken, this.otherBlindedToken, this.myRandom));
+                RDFMessages.rate(rating, message, this.otherReputationToken, MessageUtils.encodeBytes(this.otherUnblindedToken), this.myRandom));
 
         RDFDataMgr.write(System.out, rateMsg.getMessageContent(), Lang.TRIG);
 
@@ -495,10 +546,12 @@ public class CLI {
         LOG.info("Reputationtoken:");
         LOG.info(MessageUtils.toString(this.otherReputationToken));
         LOG.info("Blinded reputation token:");
-        LOG.info(this.otherBlindedToken);
+        LOG.info(MessageUtils.encodeBytes(this.otherUnblindedToken));
         LOG.info("Original random Number");
         LOG.info(this.myRandom);
 
         return rateMsg;
     }
+
+
 }

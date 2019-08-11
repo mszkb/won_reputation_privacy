@@ -1,7 +1,7 @@
 package msz.bakk.protocol.Reputation;
 
 import msz.bakk.protocol.Message.Reputationtoken;
-import msz.bakk.protocol.Signer.BlindSignature;
+import msz.bakk.protocol.Utils.BlindSignatureUtils;
 import msz.bakk.protocol.Utils.MessageUtils;
 import msz.bakk.protocol.Utils.RSAUtils;
 import org.apache.commons.logging.Log;
@@ -28,7 +28,7 @@ public class ReputationService implements IReputationServer {
 
     // TODO replace reputation hashmap with the reference to the store
     private ConcurrentHashMap<Integer, List<Reputation>> reputation = new ConcurrentHashMap<Integer, List<Reputation>>();
-    private BlindSignature blindingHelper = new BlindSignature();
+    private BlindSignatureUtils blindingHelper = new BlindSignatureUtils();
     private ServerSocket bobSocket;
     private Socket socket;
 
@@ -49,7 +49,7 @@ public class ReputationService implements IReputationServer {
         }
     }
 
-    public ReputationService(BlindSignature blindSigner) {
+    public ReputationService(BlindSignatureUtils blindSigner) {
         this(5555);
         this.standalone = true;
         this.blindingHelper = blindSigner;
@@ -189,7 +189,7 @@ public class ReputationService implements IReputationServer {
     public String blindAndSign(Reputationtoken token) {
         String blindSignature =
                 MessageUtils.encodeBytes(
-                        this.blindingHelper.blindAndSign(token.getBytes())
+                        this.blindingHelper.blindMessage(token.getBytes())
                 );
 
         this.out.println(blindSignature);
@@ -199,7 +199,7 @@ public class ReputationService implements IReputationServer {
     public String blindAndSign(byte[] tokenBytes) {
         String blindSignature =
                 MessageUtils.encodeBytes(
-                        this.blindingHelper.blindAndSign(tokenBytes)
+                        this.blindingHelper.blindMessage(tokenBytes)
                 );
 
         this.out.println(blindSignature);

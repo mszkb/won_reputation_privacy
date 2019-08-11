@@ -1,5 +1,5 @@
 import msz.bakk.protocol.Message.Certificate;
-import msz.bakk.protocol.Signer.BlindSignature;
+import msz.bakk.protocol.Utils.BlindSignatureUtils;
 import msz.bakk.protocol.Signer.Signer;
 import msz.bakk.protocol.TrustedParty.Params;
 import msz.bakk.protocol.TrustedParty.TrustedParty;
@@ -25,7 +25,7 @@ public class WonProtocolUnitTests {
 
     // TODO we probably do not need trusted party params in this class
     private Params params;
-    private BlindSignature blindSigner;
+    private BlindSignatureUtils blindSigner;
 
 
     /**
@@ -44,8 +44,8 @@ public class WonProtocolUnitTests {
         this.params = new TrustedParty().generateParams();
         this.r = new Requestor(this.params);
         this.s = new Supplier(this.params);
-        this.sp = new Signer(this.params);
-        this.blindSigner = new BlindSignature();
+        this.sp = new Signer();
+        this.blindSigner = new BlindSignatureUtils();
     }
 
     /**
