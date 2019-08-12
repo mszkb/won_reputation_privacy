@@ -46,5 +46,6 @@ public class BlindSignatureTest extends TestBase {
 
         byte[] unblindedSignedMessage = this.blindSigner.unblind(blindSignedMessage);
         Assert.assertTrue(this.blindSigner.verify(unblindedSignedMessage, message, this.sp.getPublicSignatureKey()));
+        Assert.assertTrue(this.sp.verify(unblindedSignedMessage, message));
     }
 }

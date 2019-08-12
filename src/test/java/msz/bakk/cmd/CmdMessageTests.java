@@ -98,7 +98,7 @@ public class CmdMessageTests {
         cliBob.send_token_sp();
 
         // SP sends back a blind signed token
-        cliAlice.receive_blindtoken_sp(cliSP.blindsigntoken_helper(cliAlice.getMyBlindedToken()));
+        cliAlice.receive_blindtoken_sp(cliSP.blindsigntoken_helper(MessageUtils.encodeBytes(cliAlice.getMyBlindedToken())));
         cliBob.receive_blindtoken_sp(cliSP.blindsigntoken_helper(cliBob.getMyBlindedToken()));
 
         // Both user unblinds the token and exchange it along with the reputation token

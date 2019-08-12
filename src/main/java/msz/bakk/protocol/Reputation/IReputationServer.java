@@ -2,6 +2,9 @@ package msz.bakk.protocol.Reputation;
 
 import msz.bakk.protocol.Message.Reputationtoken;
 
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
 import java.util.List;
 
 /**
@@ -25,7 +28,7 @@ public interface IReputationServer extends Runnable {
      * @param originalHash
      */
     void addRating(String forUser, String rating, String message, String blindRepuationToken, String originalHash, String originalReputationToken) throws Exception;
-    String blindAndSign(Reputationtoken token);
+    String signBlind(String blindedToken) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException;
     float getCurrentRating(int userId);
     List<Reputation> getReputations(int userId);
 }

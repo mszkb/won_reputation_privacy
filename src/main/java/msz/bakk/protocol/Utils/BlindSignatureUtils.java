@@ -94,6 +94,10 @@ public class BlindSignatureUtils {
         return blindMessage;
     }
 
+    public String blindMessage(String message) {
+        return MessageUtils.encodeBytes(this.blindMessage(MessageUtils.decodeToBytes(message)));
+    }
+
     /**
      * Unblinds a given message
      *
@@ -105,6 +109,10 @@ public class BlindSignatureUtils {
         RSABlindingEngine blindingEngine = new RSABlindingEngine();
         blindingEngine.init(false, this.blindingParameters);
         return blindingEngine.processBlock(blindedMessage, 0, blindedMessage.length);
+    }
+
+    public String unblind(String blindedMessage) {
+        return MessageUtils.encodeBytes(this.unblind(MessageUtils.decodeToBytes(blindedMessage)));
     }
 
     /**

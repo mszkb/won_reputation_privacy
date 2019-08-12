@@ -2,6 +2,7 @@ import SocketTest.Constants;
 import SocketTest.TestBase;
 import SocketTest.TestInputStream;
 import SocketTest.TestOutputStream;
+import msz.bakk.cmd.Utils;
 import msz.bakk.protocol.Message.Certificate;
 import msz.bakk.protocol.Message.Reputationtoken;
 import msz.bakk.protocol.Reputation.ReputationBotAlice;
@@ -13,6 +14,7 @@ import msz.bakk.protocol.TrustedParty.TrustedParty;
 import msz.bakk.protocol.Utils.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -64,13 +66,15 @@ public class WonBotTest extends TestBase {
     private Thread bobThread;
     private KeyPair bobKeyPair;
     private Certificate certBob;
+    private BlindSignatureUtils blindSignerAlice;
+    private BlindSignatureUtils blindSignerBob;
 
     @Before
     public void setUp() throws InterruptedException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
         this.params = new TrustedParty().generateParams();
         this.sp = new Signer();
 
-        this.reputationServer = new ReputationServer(this.in, this.out, this.sp.getPublicKey());
+        this.reputationServer = new ReputationServer(this.in, this.out, this.sp);
         this.reputationServerThread = new Thread(reputationServer);
         this.reputationServerThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
@@ -89,51 +93,31 @@ public class WonBotTest extends TestBase {
 
         this.aliceKeyPair = ECUtils.generateKeyPair();
         this.certAlice = this.sp.registerClient(aliceKeyPair.getPublic());
+
+        this.blindSignerAlice = new BlindSignatureUtils((RSAKeyParameters) this.sp.getPublicSignatureKey());
+        this.blindSignerBob = new BlindSignatureUtils((RSAKeyParameters) this.sp.getPublicSignatureKey());
     }
 
-//    @Test
+    @Test
     public void runSP_testBlindAndSign_valid_reputationToken() throws InterruptedException, NoSuchAlgorithmException, IOException, NoSuchProviderException, InvalidAlgorithmParameterException, SignatureException, InvalidKeyException {
         // These are the steps to create a blind signature out of the Reputation-Token
         KeyPair aliceKeyPair        = ECUtils.generateKeyPair();
         Certificate certAlice       = this.sp.registerClient(aliceKeyPair.getPublic());
-        String randomHashAlice      = HashUtils.generateRandomHash();
-        String randomHashBob        = HashUtils.generateRandomHash();
+
+        String original             = Utils.generateRandomNumber();
+
+        String randomHashBob        = Utils.generateHash(original);
         byte[] signedHashBob        = RSAUtils.signString(aliceKeyPair, randomHashBob);
         Reputationtoken tokenForBob = new Reputationtoken(certAlice, signedHashBob);
         String encodedToken         = MessageUtils.toString(tokenForBob);
+        String blindedToken         = MessageUtils.encodeBytes(this.blindSignerAlice.blindMessage(tokenForBob.getBytes()));
 
         // We want to blind the encodedToken by the reputation service
         WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort, true);
-        alice.writeOut("blind " + encodedToken);
-        String blindedRT = alice.readIn();
-        alice.writeOut("verify " + blindedRT + " " + encodedToken);
+        alice.writeOut("sign " + blindedToken);
+        String unblindedSignedToken = this.blindSignerAlice.unblind(alice.readIn());
+        alice.writeOut("verify " + unblindedSignedToken + " " + encodedToken + " " + original);
         assertThat(alice.readIn(), is("valid"));
-    }
-
-//    @Test
-    public void runSP_testBlindAndSign_invalid_reputationToken() throws InterruptedException, NoSuchAlgorithmException, IOException, NoSuchProviderException, InvalidAlgorithmParameterException, SignatureException, InvalidKeyException {
-        // These are the steps to create a blind signature out of the Reputation-Token
-        KeyPair aliceKeyPair        = ECUtils.generateKeyPair();
-        Certificate certAlice       = this.sp.registerClient(aliceKeyPair.getPublic());
-        String randomHashAlice      = HashUtils.generateRandomHash();
-        String randomHashBob        = HashUtils.generateRandomHash();
-        byte[] signedHashBob        = RSAUtils.signString(aliceKeyPair, randomHashBob);
-        Reputationtoken tokenForBob = new Reputationtoken(certAlice, signedHashBob);
-        String encodedToken         = MessageUtils.toString(tokenForBob);
-
-        // We want to blind the encodedToken by the reputation service
-        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort, true);
-        alice.writeOut("blind " + encodedToken);
-        String blindedRT = alice.readIn();
-
-        // Create a fake reputation token
-        String fakedrandomHashBob  = HashUtils.generateRandomHash(); // just create a new randomHash
-        byte[] fakedsignedHashBob  = RSAUtils.signString(aliceKeyPair, fakedrandomHashBob);
-        Reputationtoken fakedToken = new Reputationtoken(certAlice, fakedsignedHashBob);
-        String fakedEncodedToken   = MessageUtils.toString(fakedToken);
-
-        alice.writeOut("verify " + blindedRT + " " + fakedEncodedToken);
-        assertThat(alice.readIn(), is("invalid"));
     }
 
 //    @Test
@@ -153,7 +137,7 @@ public class WonBotTest extends TestBase {
         String encodedTokenForBob       = MessageUtils.toString(tokenForBob);
 
         WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort, true);
-        spSocket.writeOut("blind " + encodedTokenForBob);
+        spSocket.writeOut("sign " + encodedTokenForBob);
         String encodedBlindedReputationToken = spSocket.readIn();
         spSocket.writeOut("bye");
         spSocket.close();
@@ -202,7 +186,7 @@ public class WonBotTest extends TestBase {
         String encodedTokenForBob       = MessageUtils.toString(tokenForBob);
 
         WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort, true);
-        spSocket.writeOut("blind " + encodedTokenForBob);
+        spSocket.writeOut("sign " + encodedTokenForBob);
         String encodedBlindedReputationToken = spSocket.readIn();
         spSocket.writeOut("bye");
         spSocket.close();
@@ -239,7 +223,7 @@ public class WonBotTest extends TestBase {
         Reputationtoken tokenForAlice   = new Reputationtoken(certBob,  signedHashAlice);
         String encodedTokenForAlice     = MessageUtils.toString(tokenForAlice);
         WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort, true);
-        spSocket.writeOut("blind " + encodedTokenForAlice);
+        spSocket.writeOut("sign " + encodedTokenForAlice);
         String encodedBlindedReputationToken = spSocket.readIn();
         spSocket.writeOut("bye");
         spSocket.close();

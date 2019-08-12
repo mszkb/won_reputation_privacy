@@ -249,7 +249,7 @@ public class CLI {
         }
         LOG.info("Verify blinded token with original token");
         Reputationtoken reputationtoken = MessageUtils.decodeRT(encodedToken);
-        return this.blindSignature.verify(MessageUtils.decodeToBytes(blindedToken), reputationtoken.getBytes(), this.publicKeySP);
+        return this.serviceProvider.verify(MessageUtils.decodeToBytes(blindedToken), reputationtoken.getBytes());
     }
 
     @ShellMethod(value = "rates user")
@@ -267,7 +267,7 @@ public class CLI {
         Reputationtoken reputationtoken = MessageUtils.decodeRT(encodedToken);
         byte[] unblindedToken = MessageUtils.decodeToBytes(encodedUnblindToken);
 
-        if(!this.blindSignature.verify(unblindedToken, reputationtoken.getBytes(), this.publicKeySP)) {
+        if(!this.serviceProvider.verify(unblindedToken, reputationtoken.getBytes())) {
             LOG.error("BLIND TOKEN VERIFICATION FAILED");
             return false;
         }
@@ -427,7 +427,7 @@ public class CLI {
         RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
         LOG.info("COPY next line into 'blindsigntoken <token>' other SP CLI Tool");
-        LOG.info(MessageUtils.toString(this.myReputationToken));
+        LOG.info(MessageUtils.toString(this.myBlindedToken));
 
         return msg;
     }

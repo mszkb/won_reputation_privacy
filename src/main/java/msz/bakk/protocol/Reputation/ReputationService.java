@@ -1,11 +1,13 @@
 package msz.bakk.protocol.Reputation;
 
+import msz.bakk.cmd.Utils;
 import msz.bakk.protocol.Message.Reputationtoken;
-import msz.bakk.protocol.Utils.BlindSignatureUtils;
+import msz.bakk.protocol.Signer.Signer;
 import msz.bakk.protocol.Utils.MessageUtils;
 import msz.bakk.protocol.Utils.RSAUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,13 +15,16 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.PublicKey;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ReputationService implements IReputationServer {
-    private PublicKey systemPublicKey = null;
+    private Signer serviceProvider;
+    private AsymmetricKeyParameter systemPublicKey = null;
     private boolean standalone = false;
     private ReputationStore reputationStore = null;
     private static final Log LOG = LogFactory.getLog(ReputationService.class);
@@ -28,18 +33,17 @@ public class ReputationService implements IReputationServer {
 
     // TODO replace reputation hashmap with the reference to the store
     private ConcurrentHashMap<Integer, List<Reputation>> reputation = new ConcurrentHashMap<Integer, List<Reputation>>();
-    private BlindSignatureUtils blindingHelper = new BlindSignatureUtils();
     private ServerSocket bobSocket;
     private Socket socket;
 
     private BufferedReader in;
     private PrintWriter out;
 
-    public ReputationService(ReputationStore reputationStore, Socket socket, PublicKey systemPublicKey) {
+    public ReputationService(ReputationStore reputationStore, Socket socket, Signer serviceProvider) {
         this(5555);
-        this.blindingHelper = reputationStore.getBlindingHelper();
+        this.serviceProvider = serviceProvider;
         this.socket = socket;
-        this.systemPublicKey = systemPublicKey;
+        this.systemPublicKey = this.serviceProvider.getPublicSignatureKey();
         try {
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.out = new PrintWriter(socket.getOutputStream(), true);
@@ -47,12 +51,6 @@ public class ReputationService implements IReputationServer {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public ReputationService(BlindSignatureUtils blindSigner) {
-        this(5555);
-        this.standalone = true;
-        this.blindingHelper = blindSigner;
     }
 
     public ReputationService() {
@@ -94,16 +92,17 @@ public class ReputationService implements IReputationServer {
             String[] parts = inputLine.split(" ");
 
             switch (parts[0]) {
-                case "blind":
-                    this.blindAndSign(MessageUtils.decodeRT(parts[1]));
+                case "sign":
+                    this.signBlind(parts[1]);
                     break;
                 case "blindraw":
-                    this.blindAndSign(parts[1].getBytes());
+                    this.signBlind(parts[1].getBytes());
                     break;
                 case "verify":
                     this.verify(
                             MessageUtils.decodeToBytes(parts[1]),
-                            MessageUtils.decodeRT(parts[2]));
+                            MessageUtils.decodeRT(parts[2]),
+                            parts[3]);
                     break;
                 case "verifyraw":
                     this.verify(MessageUtils.decodeToBytes(parts[1]), parts[2].getBytes());
@@ -134,7 +133,7 @@ public class ReputationService implements IReputationServer {
 
     @Override
     public void addRating(String forUser, String rating, String message, String blindRepuationToken, String originalHash, String originalReputationToken) throws Exception {
-        if(this.blindingHelper.verify(originalHash.getBytes(), blindRepuationToken.getBytes())) {
+        if(this.serviceProvider.verify(originalHash.getBytes(), blindRepuationToken.getBytes())) {
             throw new Exception("Reputationtoken is not valid");
         }
 
@@ -151,7 +150,7 @@ public class ReputationService implements IReputationServer {
     }
 
     public void verify(byte[] blindRepuationToken, byte[] originalHash) throws Exception {
-        if(this.blindingHelper.verify(blindRepuationToken, originalHash)) {
+        if(this.serviceProvider.verify(blindRepuationToken, originalHash)) {
             this.out.println("valid");
             LOG.info("Reputationtoken is valid");
         } else {
@@ -161,7 +160,7 @@ public class ReputationService implements IReputationServer {
     }
 
     public void verify(byte[] blindRepuationToken, Reputationtoken reputationtoken) throws Exception {
-        if(this.blindingHelper.verify(blindRepuationToken, reputationtoken)) {
+        if(this.serviceProvider.verify(blindRepuationToken, reputationtoken.getBytes())) {
             this.out.println("valid");
             LOG.info("Reputationtoken is valid");
         } else {
@@ -169,41 +168,27 @@ public class ReputationService implements IReputationServer {
             LOG.info("Reputationtoken is not valid");
         }
     }
-    public void verify(byte[] blindRepuationToken, Reputationtoken reputationtoken, String originalHash) throws Exception {
-        if(this.blindingHelper.verify(blindRepuationToken, reputationtoken)) {
-            if(RSAUtils.verifySignature(reputationtoken.getSignatureOfHash(), originalHash, reputationtoken.getPubkeyFromCert())) {
-                if(RSAUtils.verifyCertificate(reputationtoken.getSignatureFromCert(), reputationtoken.getBytes(), this.systemPublicKey)) {
-                    this.out.println("valid");
-                    LOG.info("Reputationtoken is valid");
-                }
+    public void verify(byte[] unblindRepuationToken, Reputationtoken reputationtoken, String original) throws Exception {
+        if(this.serviceProvider.verify(unblindRepuationToken, reputationtoken.getBytes())) {
+            if(RSAUtils.verifySignature(reputationtoken.getSignatureOfHash(), Utils.generateHash(original), reputationtoken.getPubkeyFromCert())) {
+                this.out.println("valid");
+                LOG.info("Reputationtoken is valid");
             }
-        } else {
-            this.out.println("invalid");
-            LOG.info("Reputationtoken is not valid");
         }
-
-
+        this.out.println("invalid");
+        LOG.info("Reputationtoken is not valid");
     }
 
     @Override
-    public String blindAndSign(Reputationtoken token) {
-        String blindSignature =
-                MessageUtils.encodeBytes(
-                        this.blindingHelper.blindMessage(token.getBytes())
-                );
+    public String signBlind(String blindedToken) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        String blindSignature = this.signBlind(MessageUtils.decodeToBytes(blindedToken));
 
         this.out.println(blindSignature);
         return blindSignature;
     }
 
-    public String blindAndSign(byte[] tokenBytes) {
-        String blindSignature =
-                MessageUtils.encodeBytes(
-                        this.blindingHelper.blindMessage(tokenBytes)
-                );
-
-        this.out.println(blindSignature);
-        return blindSignature;
+    public String signBlind(byte[] tokenBytes) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        return MessageUtils.encodeBytes(this.serviceProvider.signBlindMessage(tokenBytes));
     }
 
     @Override

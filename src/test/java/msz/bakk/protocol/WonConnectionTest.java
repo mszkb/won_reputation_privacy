@@ -26,7 +26,7 @@ public class WonConnectionTest extends TestBase {
     }
 
     public void connectionTest() throws Exception {
-        ReputationServer reputationServer = new ReputationServer(in, out, sp.getPublicKey());
+        ReputationServer reputationServer = new ReputationServer(in, out, this.sp);
         Thread bot1Thread = new Thread(reputationServer);
         bot1Thread.start();
 

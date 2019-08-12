@@ -1,8 +1,10 @@
 package msz.bakk.protocol.Reputation;
 
 import msz.bakk.protocol.ConnectionHandler;
+import msz.bakk.protocol.Signer.Signer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -28,7 +30,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class ReputationServer extends Thread {
     private static final Log LOG = LogFactory.getLog(ReputationServer.class);
-    private PublicKey systemPublicKey = null;
+    private Signer sp;
+    private AsymmetricKeyParameter publicKey = null;
 
     private ExecutorService executor = Executors.newFixedThreadPool(10);
 
@@ -47,11 +50,11 @@ public class ReputationServer extends Thread {
         this.out = System.out;
     }
 
-    public ReputationServer(InputStream in, PrintStream out, PublicKey systemPublicKey) {
+    public ReputationServer(InputStream in, PrintStream out, Signer sp) {
         // For testing the server itself, use the Streams from the Testbase class
         this.in = in;
         this.out = out;
-        this.systemPublicKey = systemPublicKey;
+        this.sp = sp;
     }
 
     @Override
@@ -80,7 +83,7 @@ public class ReputationServer extends Thread {
             while(!serverSocket.isClosed()) {
                 LOG.info("X Waiting for connection on port " + port);
                 Socket socket = serverSocket.accept();
-                ReputationService service = new ReputationService(reputationStore, socket, systemPublicKey);
+                ReputationService service = new ReputationService(reputationStore, socket, sp);
                 LOG.info("We spawn a new service thread");
                 executor.execute(service);
             }

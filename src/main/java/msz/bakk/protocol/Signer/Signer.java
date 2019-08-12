@@ -1,11 +1,15 @@
 package msz.bakk.protocol.Signer;
 
 import msz.bakk.protocol.Message.Certificate;
+import msz.bakk.protocol.Utils.BlindSignatureUtils;
 import msz.bakk.protocol.Utils.ECUtils;
 import msz.bakk.protocol.Utils.RSAUtils;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
+import org.bouncycastle.crypto.digests.SHA256Digest;
+import org.bouncycastle.crypto.engines.RSAEngine;
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 import org.bouncycastle.crypto.params.RSAKeyParameters;
+import org.bouncycastle.crypto.signers.PSSSigner;
 
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -21,6 +25,8 @@ public class Signer {
 
     private ArrayList<PublicKey> clientList = new ArrayList<>();
 
+    private BlindSignatureUtils blindSignatureUtils;
+
     public Signer() {
         KeyPair signerKP = ECUtils.generateKeyPair();
 
@@ -34,6 +40,8 @@ public class Signer {
         AsymmetricCipherKeyPair keys = RSAUtils.generateKeyPair();
         this.publicSignatureKey = keys.getPublic();
         this.privateSignatureKey = keys.getPrivate();
+
+        this.blindSignatureUtils = new BlindSignatureUtils((RSAKeyParameters) this.publicSignatureKey);
     }
 
     
@@ -66,16 +74,12 @@ public class Signer {
         return certificateTextSignature.verify(certToVerify.getSignature());
     }
 
-    public byte[] signMessage(String encodedBlindedToken) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-        return RSAUtils.signString(this.privateKey, encodedBlindedToken);
-    }
-
-    public byte[] signMessage(byte[] blindedToken) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-        return RSAUtils.signString(this.privateKey, blindedToken);
-    }
-
     public byte[] signBlindMessage(byte[] blindedToken) {
         return RSAUtils.signBlindedString(this.privateSignatureKey, blindedToken);
+    }
+
+    public boolean verify(byte[] unblindedSignature, byte[] originalMessage) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        return this.blindSignatureUtils.verify(unblindedSignature, originalMessage, this.publicSignatureKey);
     }
 
     public PublicKey getPublicKey() {
