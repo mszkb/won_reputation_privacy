@@ -1,13 +1,12 @@
 package msz.bakk.cmd;
 
-import msz.bakk.protocol.Message.Message;
 import msz.bakk.protocol.Utils.ECUtils;
 import msz.bakk.protocol.Utils.MessageUtils;
 import msz.bakk.protocol.vocabulary.REP;
-import org.apache.activemq.command.MessageAck;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.rdf.model.*;
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
+import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.junit.Before;
 import org.junit.Test;
 import won.protocol.message.WonMessage;
@@ -54,9 +53,12 @@ public class CmdMessageTests {
         cliBob.addcertificate(cliSP.generatecertificate(cliBob.publickey()));
 
         AsymmetricKeyParameter spPubKey = cliSP.publicSignatureKey();
+        RSAKeyParameters rsaKeyParameters = (RSAKeyParameters) spPubKey;
 
-        cliAlice.addPublicKeySP(spPubKey);
-        cliBob.addPublicKeySP(spPubKey);
+        String modulus = String.valueOf(rsaKeyParameters.getModulus());
+        String exponent = String.valueOf(rsaKeyParameters.getExponent());
+        cliAlice.addpublickey_sp(modulus, exponent);
+        cliBob.addpublickey_sp(spPubKey);
     }
 
     @Test
@@ -124,7 +126,7 @@ public class CmdMessageTests {
     }
 
     @Test
-    public void test_use_own_token() throws NoSuchAlgorithmException, NoSuchProviderException, IOException, SignatureException, InvalidKeyException {
+    public void test_bad_use_own_token() throws NoSuchAlgorithmException, NoSuchProviderException, IOException, SignatureException, InvalidKeyException {
         cliAlice.send_randomhash();
         cliBob.send_randomhash();
         cliAlice.receive_hash(cliBob.getMyRandomHash());
@@ -296,8 +298,8 @@ public class CmdMessageTests {
         cliAlice.send_token_sp();
         cliBob.send_token_sp();
         // @see test_won_message_sendtokensp
-        String blindedTokenAliceForBob = cliSP.blindsigntoken_helper(cliAlice.getMyBlindedToken());
-        String blindedTokenBobForAlice = cliSP.blindsigntoken_helper(cliBob.getMyBlindedToken());
+        String blindedTokenAliceForBob = cliSP.blindsigntoken_helper(MessageUtils.encodeBytes(cliAlice.getMyBlindedToken()));
+        String blindedTokenBobForAlice = cliSP.blindsigntoken_helper(MessageUtils.encodeBytes(cliBob.getMyBlindedToken()));
         cliAlice.receive_blindtoken_sp(blindedTokenAliceForBob);
         cliBob.receive_blindtoken_sp(blindedTokenBobForAlice);
         cliAlice.receive_token_user(cliBob.getMyUnblindSignedToken(), cliBob.getEncodedReputationToken());
@@ -359,7 +361,7 @@ public class CmdMessageTests {
     }
 
     @Test
-    public void test_use_token_twice() throws NoSuchAlgorithmException, NoSuchProviderException, IOException, SignatureException, InvalidKeyException {
+    public void test_bad_use_token_twice() throws NoSuchAlgorithmException, NoSuchProviderException, IOException, SignatureException, InvalidKeyException {
         cliAlice.send_randomhash();
         cliBob.send_randomhash();
 

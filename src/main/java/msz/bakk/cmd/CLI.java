@@ -1,7 +1,6 @@
 package msz.bakk.cmd;
 
 import msz.bakk.protocol.Message.Certificate;
-import msz.bakk.protocol.Message.Message;
 import msz.bakk.protocol.Message.Reputationtoken;
 import msz.bakk.protocol.Reputation.Reputation;
 import msz.bakk.protocol.Utils.BlindSignatureUtils;
@@ -21,6 +20,7 @@ import org.springframework.shell.standard.ShellMethod;
 import won.protocol.message.WonMessage;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,6 +70,7 @@ public class CLI {
             LOG.info("-----------------------------------------------------------------------");
             LOG.info("blindsigntoken <token>");
             LOG.info("rate <rating> <comment> <token other user> <blindtoken other user> <original_hash>");
+            LOG.info("publickey - public key for blind signatures");
             LOG.info("-----------------------------------------------------------------------");
         } else {
             // To create your own certificate:
@@ -104,6 +105,12 @@ public class CLI {
             LOG.info("receive_token_user <token other user> <blindtoken other user>");
             LOG.info("rate_user <rating> <comment> <token other user> <blindtoken other user>");
             LOG.info("-----------------------------------------------------------------------");
+            LOG.info("\n");
+            LOG.info("First we need a certificate");
+            LOG.info("Use 'publickey' to get your key - copy it");
+            LOG.info("Then send the key to the SP by using the command 'generatecertificate <publickey>");
+            LOG.info("Store the certificate by using 'addcertificate <certificate>'");
+            LOG.info("After that, import the public key from the SP 'publicSignatureKey <publickey sp>'");
         }
     }
 
@@ -129,7 +136,15 @@ public class CLI {
         this.usedTokens = new HashMap<>();
     }
 
-    public void addPublicKeySP(AsymmetricKeyParameter spPubKey) {
+    @ShellMethod(value = "Adding Public Key from SP")
+    public String addpublickey_sp(String modulus, String exponent) {
+        RSAKeyParameters rsaKeyParameters = new RSAKeyParameters(false, new BigInteger(modulus), new BigInteger(exponent));
+        this.spPublicKey = rsaKeyParameters;
+        this.blindSignature = new BlindSignatureUtils(rsaKeyParameters);
+        return "";
+    }
+
+    public void addpublickey_sp(AsymmetricKeyParameter spPubKey) {
         this.spPublicKey = spPubKey;
         this.blindSignature = new BlindSignatureUtils((RSAKeyParameters) spPubKey);
     }
@@ -148,6 +163,7 @@ public class CLI {
 
         String encodedCert = MessageUtils.toString(cert);
 
+        LOG.info("COPY next line into 'addcertificate <certificate>' users CLI Tool");
         return encodedCert;
     }
 
@@ -180,6 +196,17 @@ public class CLI {
 
     @ShellMethod(value = "Shows the public key of current instance")
     public String publickey() throws IOException {
+        if(this.sp) {
+            RSAKeyParameters temp = (RSAKeyParameters) this.publicKeySP;
+            // Bouncycastle is weird - we not to extract 2 variables out of the public key
+            // convert them to a string - so we can send it over the CLI Tool
+            LOG.info("You got two things to copy, first the modulus, then the exponent");
+            LOG.info("Copy them into 'addpublickey_sp <modulus> <exponent>'");
+            LOG.info(temp.getModulus());
+            LOG.info(temp.getExponent());
+            return "";
+
+        }
         return MessageUtils.toString(this.keyPair.getPublic());
     }
 
@@ -276,6 +303,10 @@ public class CLI {
             LOG.error("HASH VERIFICATION FAILED");
             return false;
         }
+
+        // TODO verify Signature of Certificate
+
+        // TODO check if signed was already used
 
         // User to rate
         int userId = reputationtoken.getCertificate().getID();
@@ -393,6 +424,8 @@ public class CLI {
         }
 
         this.myReputationToken = new Reputationtoken(this.myCertificate, this.signedHash);
+
+        LOG.info("Next step: send_token_sp");
     }
 
     // Helper methods do not create a WoN Message
@@ -427,7 +460,7 @@ public class CLI {
         RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
         LOG.info("COPY next line into 'blindsigntoken <token>' other SP CLI Tool");
-        LOG.info(MessageUtils.toString(this.myBlindedToken));
+        LOG.info(MessageUtils.encodeBytes(this.myBlindedToken));
 
         return msg;
     }
@@ -465,7 +498,7 @@ public class CLI {
         LOG.info("Reputationtoken:");
         LOG.info(MessageUtils.toString(this.myReputationToken));
         LOG.info("Blinded reputation token:");
-        LOG.info(this.myBlindedToken);
+        LOG.info(MessageUtils.toString(this.myBlindedToken));
 
         return msg;
     }

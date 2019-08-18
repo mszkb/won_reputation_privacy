@@ -16,7 +16,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -37,8 +36,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * 6) the bot sends the blind signature to the other bot and recieves a blind signature
  * 7) the bot verifies with the repuationserver if the recieved siganture is valid
  */
-public class WonBotTest extends TestBase {
-    private static final Log LOG = LogFactory.getLog(WonBotTest.class);
+public class WonSocketTest extends TestBase {
+    private static final Log LOG = LogFactory.getLog(WonSocketTest.class);
 
     private TestInputStream bot1in = new TestInputStream();
     private TestOutputStream bot1out = new TestOutputStream();
@@ -113,14 +112,14 @@ public class WonBotTest extends TestBase {
         String blindedToken         = MessageUtils.encodeBytes(this.blindSignerAlice.blindMessage(tokenForBob.getBytes()));
 
         // We want to blind the encodedToken by the reputation service
-        WrappedSocket alice = new WrappedSocket("localhost", reputationServicePort, true);
-        alice.writeOut("sign " + blindedToken);
-        String unblindedSignedToken = this.blindSignerAlice.unblind(alice.readIn());
-        alice.writeOut("verify " + unblindedSignedToken + " " + encodedToken + " " + original);
-        assertThat(alice.readIn(), is("valid"));
+        WrappedSocket sp = new WrappedSocket("localhost", reputationServicePort, true);
+        sp.writeOut("sign " + blindedToken);
+        String unblindedSignedToken = this.blindSignerAlice.unblind(sp.readIn());
+        sp.writeOut("verify " + unblindedSignedToken + " " + encodedToken + " " + original);
+        assertThat(sp.readIn(), is("valid"));
     }
 
-//    @Test
+    @Test
     public void runBob_testProtocol() throws Exception {
         this.bobThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
@@ -131,14 +130,15 @@ public class WonBotTest extends TestBase {
         WrappedSocket alice = new WrappedSocket("localhost", bobPort, true);
         alice.writeOut("[1] " + randomHashAlice);
 
-        String randomHashBob            = alice.readIn().split(" ")[1];
-        byte[] signedHashBob            = RSAUtils.signString(aliceKeyPair, randomHashBob);
-        Reputationtoken tokenForBob     = new Reputationtoken(certAlice, signedHashBob);
-        String encodedTokenForBob       = MessageUtils.toString(tokenForBob);
+        String randomHashBob        = alice.readIn().split(" ")[1];
+        byte[] signedHashBob        = RSAUtils.signString(aliceKeyPair, randomHashBob);
+        Reputationtoken tokenForBob = new Reputationtoken(certAlice, signedHashBob);
+        String encodedTokenForBob   = MessageUtils.toString(tokenForBob);
+        String blindedToken         = MessageUtils.encodeBytes(this.blindSignerAlice.blindMessage(tokenForBob.getBytes()));
 
         WrappedSocket spSocket = new WrappedSocket("localhost", reputationServicePort, true);
-        spSocket.writeOut("sign " + encodedTokenForBob);
-        String encodedBlindedReputationToken = spSocket.readIn();
+        spSocket.writeOut("sign " + blindedToken);
+        String encodedBlindedReputationToken = this.blindSignerAlice.unblind(spSocket.readIn());
         spSocket.writeOut("bye");
         spSocket.close();
 
