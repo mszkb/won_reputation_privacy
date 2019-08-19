@@ -19,7 +19,7 @@ public class WonConnectionTest extends TestBase {
     private Params params;
     private Signer sp;
 
-    @Before
+//    @Before
     public void setUp() throws NoSuchAlgorithmException {
         this.params = new TrustedParty().generateParams();
         this.sp = new Signer();

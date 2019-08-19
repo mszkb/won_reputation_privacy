@@ -72,6 +72,7 @@ public class CLI {
             LOG.info("rate <rating> <comment> <token other user> <blindtoken other user> <original_hash>");
             LOG.info("publickey - public key for blind signatures");
             LOG.info("-----------------------------------------------------------------------");
+            LOG.info("Generate a certificate for each user 'gen_cert <publickey>'");
         } else {
             // To create your own certificate:
             // - remove this.myCertificate = new Certificate...
@@ -107,10 +108,10 @@ public class CLI {
             LOG.info("-----------------------------------------------------------------------");
             LOG.info("\n");
             LOG.info("First we need a certificate");
-            LOG.info("Use 'publickey' to get your key - copy it");
-            LOG.info("Then send the key to the SP by using the command 'generatecertificate <publickey>");
-            LOG.info("Store the certificate by using 'addcertificate <certificate>'");
-            LOG.info("After that, import the public key from the SP 'publicSignatureKey <publickey sp>'");
+            LOG.info("Type 'publickey' to get your key - copy it");
+//            LOG.info("Then send the key to the SP by using the command 'generatecertificate <publickey>");
+//            LOG.info("Store the certificate by using 'addcertificate <certificate>'");
+//            LOG.info("After that, import the public key from the SP 'publicSignatureKey <publickey sp>'");
         }
     }
 
@@ -137,21 +138,30 @@ public class CLI {
     }
 
     @ShellMethod(value = "Adding Public Key from SP")
-    public String addpublickey_sp(String modulus, String exponent) {
+    public String add_pubkey_sp(String modulus, String exponent) {
         RSAKeyParameters rsaKeyParameters = new RSAKeyParameters(false, new BigInteger(modulus), new BigInteger(exponent));
         this.spPublicKey = rsaKeyParameters;
         this.blindSignature = new BlindSignatureUtils(rsaKeyParameters);
+        LOG.info("Successfully added public key from the SP");
+        LOG.info("Now we can proceed with the actual protocol");
+        LOG.info("Next step 'send_randomhash'");
         return "";
     }
 
-    public void addpublickey_sp(AsymmetricKeyParameter spPubKey) {
+    public void add_pubkey_sp(AsymmetricKeyParameter spPubKey) {
         this.spPublicKey = spPubKey;
         this.blindSignature = new BlindSignatureUtils((RSAKeyParameters) spPubKey);
     }
 
     @ShellMethod(value = "Generating certificate for the users")
-    public String generatecertificate(String encodedPubKey) throws NoSuchProviderException, NoSuchAlgorithmException, IOException {
-        PublicKey publicKey = MessageUtils.decodePubKey(encodedPubKey);
+    public String gen_cert(String encodedPubKey) throws NoSuchProviderException, NoSuchAlgorithmException, IOException {
+        PublicKey publicKey;
+        try {
+            publicKey = MessageUtils.decodePubKey(encodedPubKey);
+        } catch (Exception e) {
+            LOG.error("Cannot decode pub key - Maybe you copied only part of the string or the wrong one");
+            return "";
+        }
 
         if(this.serviceProvider == null) {
             LOG.error("initsp was not invoked - you want to generate a certificate");
@@ -163,7 +173,8 @@ public class CLI {
 
         String encodedCert = MessageUtils.toString(cert);
 
-        LOG.info("COPY next line into 'addcertificate <certificate>' users CLI Tool");
+        LOG.info("COPY next line into 'add_cert <certificate>' users CLI Tool");
+        LOG.info(encodedCert);
         return encodedCert;
     }
 
@@ -201,12 +212,14 @@ public class CLI {
             // Bouncycastle is weird - we not to extract 2 variables out of the public key
             // convert them to a string - so we can send it over the CLI Tool
             LOG.info("You got two things to copy, first the modulus, then the exponent");
-            LOG.info("Copy them into 'addpublickey_sp <modulus> <exponent>'");
+            LOG.info("Copy them into 'add_pubkey_sp <modulus> <exponent>'");
             LOG.info(temp.getModulus());
             LOG.info(temp.getExponent());
             return "";
 
         }
+        LOG.info("Copy the next line into SP 'generatecertificate <publickey>'");
+        LOG.info(MessageUtils.toString(this.keyPair.getPublic()));
         return MessageUtils.toString(this.keyPair.getPublic());
     }
 
@@ -221,13 +234,16 @@ public class CLI {
     }
 
     @ShellMethod(value = "Set the certificate for us")
-    public void addcertificate(String encodedcertificate) {
+    public void add_cert(String encodedcertificate) {
         if(this.sp) {
             LOG.error("SP is not allowed");
             return;
         }
 
         this.myCertificate = MessageUtils.decodeCert(encodedcertificate);
+        LOG.info("Successfully added certificate from the SP");
+        LOG.info("Next step we need the public key from the SP");
+        LOG.info("Use the command 'publickey' on the SP CLI-Tool");
     }
 
 
@@ -247,7 +263,7 @@ public class CLI {
         RDFDataMgr.write(System.out, msg.getMessageContent(), Lang.TRIG);
 
         LOG.info("We created the blind signature of your reputation token");
-        LOG.info("Copy the the encoded String into the client side to rate the person");
+        LOG.info("Copy nextline into 'receive_blindtoken_sp <signedtoken>'");
         LOG.info(blindSignature);
 
         return msg;
@@ -306,6 +322,7 @@ public class CLI {
 
         // TODO verify Signature of Certificate
 
+
         // TODO check if signed was already used
 
         // User to rate
@@ -320,7 +337,12 @@ public class CLI {
             this.ratingStore.put(userId, newList);
         }
 
-        usedTokens.put(encodedUnblindToken, original);
+        if(!usedTokens.containsKey(encodedUnblindToken)) {
+            usedTokens.put(encodedUnblindToken, original);
+        } else {
+            LOG.error("Token already used");
+            return false;
+        }
 
         LOG.info("OK");
         return true;
@@ -420,7 +442,7 @@ public class CLI {
             LOG.error("We do not have a certificate yet");
             LOG.info("Grab a certificate from the SP by sending him our public key");
             LOG.info("SP: generatecertificate <publickey>");
-            LOG.info("WE: addcertificate <encodeded certificate>");
+            LOG.info("WE: add_cert <encodeded certificate>");
         }
 
         this.myReputationToken = new Reputationtoken(this.myCertificate, this.signedHash);
@@ -474,7 +496,16 @@ public class CLI {
             return;
         }
 
-        this.myUnblindSignedToken = MessageUtils.encodeBytes(this.unblind_helper(blindSignedToken));
+        try {
+            this.myUnblindSignedToken = MessageUtils.encodeBytes(this.unblind_helper(blindSignedToken));
+        } catch (Exception e) {
+            LOG.error("Could not unblind the token - did copy the whole String?");
+            return;
+        }
+
+        LOG.info("Successfully unblind token");
+        LOG.info("Next step is to send the unblinded signed token and the repuation token to the other user");
+        LOG.info("Type 'send_token_user'");
     }
 
     @ShellMethod(value = "We exchange the reputation token - so the other is authorized to rate us")
@@ -494,11 +525,11 @@ public class CLI {
         LOG.info("It contains the token and the blind signature");
 
 
-        LOG.info("COPY next two lines into 'receive_token_user <reputation token> <blindtoken>' other SP CLI Tool");
+        LOG.info("COPY next two lines into 'receive_token_user <unblinded signed token> <reputation token>' other SP CLI Tool");
+        LOG.info("unlinded signed reputation token:");
+        LOG.info(MessageUtils.toString(this.myUnblindSignedToken));
         LOG.info("Reputationtoken:");
         LOG.info(MessageUtils.toString(this.myReputationToken));
-        LOG.info("Blinded reputation token:");
-        LOG.info(MessageUtils.toString(this.myBlindedToken));
 
         return msg;
     }
@@ -531,8 +562,12 @@ public class CLI {
         boolean valid2 = verify_signature_helper(this.otherReputationToken.getSignatureOfHash(), this.myRandomHash, this.otherReputationToken.getPubkeyFromCert());
         if(!valid2) {
             LOG.error("Signature of hash is not valid");
+            LOG.error("Maybe you send it to the wrong user?");
             return false;
         }
+
+        LOG.info("Now it is time to rate the other Person");
+        LOG.info("Next command: rate_user <rating as float> <comment as text>");
 
         return true;
     }

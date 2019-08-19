@@ -49,16 +49,16 @@ public class CmdMessageTests {
 
         cliSP = new CLI();
         cliSP.initsp();
-        cliAlice.addcertificate(cliSP.generatecertificate(cliAlice.publickey()));
-        cliBob.addcertificate(cliSP.generatecertificate(cliBob.publickey()));
+        cliAlice.add_cert(cliSP.gen_cert(cliAlice.publickey()));
+        cliBob.add_cert(cliSP.gen_cert(cliBob.publickey()));
 
         AsymmetricKeyParameter spPubKey = cliSP.publicSignatureKey();
         RSAKeyParameters rsaKeyParameters = (RSAKeyParameters) spPubKey;
 
         String modulus = String.valueOf(rsaKeyParameters.getModulus());
         String exponent = String.valueOf(rsaKeyParameters.getExponent());
-        cliAlice.addpublickey_sp(modulus, exponent);
-        cliBob.addpublickey_sp(spPubKey);
+        cliAlice.add_pubkey_sp(modulus, exponent);
+        cliBob.add_pubkey_sp(spPubKey);
     }
 
     @Test
@@ -410,5 +410,33 @@ public class CmdMessageTests {
         assertThat(cliSP.showrating("2")).isEqualTo("5.0");
     }
 
+    @Test
+    public void test_bad_use_yorself() throws NoSuchAlgorithmException, NoSuchProviderException, IOException, SignatureException, InvalidKeyException {
+        cliAlice.send_randomhash();
+
+        // We use helper methods to get out the randomhash
+        // The WonMessage which contains the randomhash was tested before
+        cliAlice.receive_hash(cliAlice.getMyRandomHash());
+
+        // CLI Tool creates WonMessage
+        // send_token_sp saves the reputationtoken into a field for easier testing
+        cliAlice.send_token_sp();
+
+        // We use some helper methods to make tests easier
+
+        String blindedTokenAliceForMyself = cliSP.blindsigntoken_helper(cliAlice.getMyBlindedToken());
+        cliAlice.receive_blindtoken_sp(blindedTokenAliceForMyself);
+
+        cliAlice.receive_token_user(cliAlice.getMyUnblindSignedToken(), cliAlice.getEncodedReputationToken());
+
+        cliSP.rate(
+                5.0f,
+                "Nice and smooth transaction",
+                MessageUtils.toString(cliAlice.getOtherReputationToken()),
+                cliAlice.getOtherUnblindedToken(),
+                cliAlice.getMyRandom());
+
+        assertThat(cliSP.showrating("2")).isEqualTo("0.0");
+    }
 
 }

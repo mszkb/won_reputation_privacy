@@ -68,7 +68,7 @@ public class WonSocketTest extends TestBase {
     private BlindSignatureUtils blindSignerAlice;
     private BlindSignatureUtils blindSignerBob;
 
-    @Before
+//    @Before
     public void setUp() throws InterruptedException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
         this.params = new TrustedParty().generateParams();
         this.sp = new Signer();
@@ -97,7 +97,7 @@ public class WonSocketTest extends TestBase {
         this.blindSignerBob = new BlindSignatureUtils((RSAKeyParameters) this.sp.getPublicSignatureKey());
     }
 
-    @Test
+//    @Test
     public void runSP_testBlindAndSign_valid_reputationToken() throws InterruptedException, NoSuchAlgorithmException, IOException, NoSuchProviderException, InvalidAlgorithmParameterException, SignatureException, InvalidKeyException {
         // These are the steps to create a blind signature out of the Reputation-Token
         KeyPair aliceKeyPair        = ECUtils.generateKeyPair();
@@ -119,7 +119,7 @@ public class WonSocketTest extends TestBase {
         assertThat(sp.readIn(), is("valid"));
     }
 
-    @Test
+//    @Test
     public void runBob_testProtocol() throws Exception {
         this.bobThread.start();
         Thread.sleep(Constants.COMPONENT_STARTUP_WAIT);
