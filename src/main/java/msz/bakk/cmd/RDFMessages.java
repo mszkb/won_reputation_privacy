@@ -13,6 +13,7 @@ import org.apache.jena.vocabulary.RDF;
 import won.protocol.message.WonMessage;
 import won.protocol.message.WonMessageBuilder;
 import won.protocol.util.RdfUtils;
+import won.protocol.util.WonRdfUtils;
 import won.protocol.vocabulary.CERT;
 import won.protocol.vocabulary.WON;
 
@@ -24,6 +25,9 @@ import java.security.interfaces.ECPublicKey;
 public class RDFMessages {
 
     public static WonMessage createWonMessage(Model m) {
+        // replace the base resource in the model with the 
+        // message uri to connect the model's content with the message 
+        RdfUtils.replaceBaseResource(m, m.getResource("messageUri")); 
         return WonMessageBuilder.setMessagePropertiesForConnectionMessage(
                 URI.create("messageUri"),
                 URI.create("localConnection"),
