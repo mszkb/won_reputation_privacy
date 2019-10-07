@@ -218,7 +218,7 @@ public class CLI {
             return "";
 
         }
-        LOG.info("Copy the next line into SP 'generatecertificate <publickey>'");
+        LOG.info("Copy the next line into SP 'gen_cert <publickey>'");
         LOG.info(MessageUtils.toString(this.keyPair.getPublic()));
         return MessageUtils.toString(this.keyPair.getPublic());
     }
@@ -441,7 +441,7 @@ public class CLI {
         if(this.myCertificate == null) {
             LOG.error("We do not have a certificate yet");
             LOG.info("Grab a certificate from the SP by sending him our public key");
-            LOG.info("SP: generatecertificate <publickey>");
+            LOG.info("SP: gen_cert <publickey>");
             LOG.info("WE: add_cert <encodeded certificate>");
         }
 
@@ -527,7 +527,7 @@ public class CLI {
 
         LOG.info("COPY next two lines into 'receive_token_user <unblinded signed token> <reputation token>' other SP CLI Tool");
         LOG.info("unlinded signed reputation token:");
-        LOG.info(MessageUtils.toString(this.myUnblindSignedToken));
+        LOG.info(this.myUnblindSignedToken);
         LOG.info("Reputationtoken:");
         LOG.info(MessageUtils.toString(this.myReputationToken));
 

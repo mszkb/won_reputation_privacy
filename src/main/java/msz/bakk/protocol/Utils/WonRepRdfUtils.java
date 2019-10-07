@@ -39,7 +39,7 @@ public class WonRepRdfUtils extends WonRdfUtils {
     private static Model createModelWithBaseResource() {
         Model model = ModelFactory.createDefaultModel();
         model.setNsPrefix("", REP.BASE_URI);
-        model.createResource(model.getNsPrefixURI(""));
+        // model.createResource(model.getNsPrefixURI(""));
         return model;
     }
 }
