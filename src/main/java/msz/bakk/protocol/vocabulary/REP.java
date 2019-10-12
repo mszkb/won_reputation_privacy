@@ -5,7 +5,7 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 
 public class REP {
-    public static final String BASE_URI = "https://w3id.org/won/ext/reputation#";
+    public static final String BASE_URI = "https://w3id.org/won/ext/rep#";
     public static final String DEFAULT_PREFIX = "srep";
     private static Model m = ModelFactory.createDefaultModel();
     public static final Property CERTIFICATE = m.createProperty(BASE_URI + "certificate");

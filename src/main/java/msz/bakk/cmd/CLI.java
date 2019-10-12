@@ -526,7 +526,7 @@ public class CLI {
 
 
         LOG.info("COPY next two lines into 'receive_token_user <unblinded signed token> <reputation token>' other SP CLI Tool");
-        LOG.info("unlinded signed reputation token:");
+        LOG.info("unblinded signed reputation token:");
         LOG.info(this.myUnblindSignedToken);
         LOG.info("Reputationtoken:");
         LOG.info(MessageUtils.toString(this.myReputationToken));

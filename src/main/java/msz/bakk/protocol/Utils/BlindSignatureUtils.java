@@ -71,8 +71,6 @@ public class BlindSignatureUtils {
      * @return blind signature of that original message
      */
     public byte[] blindMessage(byte[] message) {
-        LOG.info("Blinding Message");
-
         // Initialize blind signature classes of bouncycastle with
         // SHA256 and a predefined saltlength
         this.blindSigner = new PSSSigner(new RSABlindingEngine(), new SHA256Digest(), this.saltL);
